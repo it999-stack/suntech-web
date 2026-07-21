@@ -4,10 +4,12 @@ import { KpiRowSkeleton } from '@/components/skeletons/KpiRowSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { ActivityFeed } from '@/modules/shared/components/ActivityFeed'
 import { AlertsPanel } from '@/modules/shared/components/AlertsPanel'
-import { KpiCard } from '@/modules/shared/components/KpiCard'
 import { SiteProgressChart } from '../components/SiteProgressChart'
 import { SiteProgressTable } from '../components/SiteProgressTable'
 import { useDashboardActivity, useDashboardAlerts, useDashboardData } from '../hooks/useDashboardQueries'
+import { QuickOverviewCard } from '@/modules/shared/components/QuickOverviewCards'
+
+import overviewBg from '@/assets/overview_bg.png'
 
 export default function PilingDashboardPage() {
   const dashboardQuery = useDashboardData()
@@ -22,34 +24,37 @@ export default function PilingDashboardPage() {
       {dashboardQuery.isLoading ? (
         <KpiRowSkeleton />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <KpiCard
-            label="Total Piles Progress"
-            value={overview ? `${overview.completedPiles} / ${overview.totalPiles}` : '—'}
-            icon={<HardHatIcon className="size-4" />}
-          />
-          <KpiCard
-            label="Active Sites"
-            value={overview?.activeSites ?? '—'}
-            icon={<ListChecksIcon className="size-4" />}
-          />
-          <KpiCard
-            label="Pending Resume"
-            value={overview?.pendingResume ?? '—'}
-            icon={<AlertTriangleIcon className="size-4" />}
-            variant="warning"
-          />
-          <KpiCard
-            label="Today's Checklists"
-            value={
-              overview
+        <QuickOverviewCard
+          title="Quick overview"
+          description="This is all over site progress today"
+          backgroundImage={overviewBg}
+          items={[
+            {
+              value: overview
+                ? `${overview.completedPiles} / ${overview.totalPiles}`
+                : '—',
+              label: 'Total piles progress',
+              icon: <ClipboardCheckIcon className="size-4" />,
+            },
+            {
+              value: overview?.activeSites ?? '—',
+              label: 'Active sites',
+              icon: <HardHatIcon className="size-4" />,
+            },
+            {
+              value: overview?.pendingResume ?? '—',
+              label: 'Pending resume',
+              icon: <AlertTriangleIcon className="size-4" />,
+            },
+            {
+              value: overview
                 ? `${overview.todaysChecklistsSubmitted} / ${overview.todaysChecklistsExpected}`
-                : '—'
-            }
-            icon={<ClipboardCheckIcon className="size-4" />}
-            variant="success"
-          />
-        </div>
+                : '—',
+              label: "Today's checklists",
+              icon: <ListChecksIcon className="size-4" />,
+            },
+          ]}
+        />
       )}
 
       {dashboardQuery.isLoading ? (

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { cn } from '@/lib/utils'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
@@ -185,13 +184,7 @@ export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressCha
             description={`${selectedSite?.siteName ?? 'This site'} has no checklist history or target end date yet.`}
           />
         ) : (
-          <div
-            className={cn(
-              'h-72 w-full rounded-lg',
-              '[background-image:radial-gradient(circle,var(--color-border)_1px,transparent_1px)]',
-              '[background-size:16px_16px]'
-            )}
-          >
+          <div className="h-72 w-full rounded-lg">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartPoints} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
                 <defs>
@@ -203,7 +196,11 @@ export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressCha
                     <stop offset="0%" stopColor={PLANNED_COLOR} stopOpacity={0.16} />
                     <stop offset="100%" stopColor={PLANNED_COLOR} stopOpacity={0} />
                   </linearGradient>
+                  <pattern id="siteProgressDotGrid" width="16" height="16" patternUnits="userSpaceOnUse">
+                    <circle cx="1" cy="1" r="1" fill="var(--color-border)" />
+                  </pattern>
                 </defs>
+                <CartesianGrid stroke="none" fill="url(#siteProgressDotGrid)" />
                 <XAxis
                   dataKey="label"
                   tickLine={false}

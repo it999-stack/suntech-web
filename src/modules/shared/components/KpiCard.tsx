@@ -10,6 +10,7 @@ interface KpiCardProps {
   icon?: ReactNode
   variant?: KpiCardVariant
   trend?: string
+  className?: string // lets callers override the card surface, e.g. for glass contexts
 }
 
 const variantIconStyles: Record<KpiCardVariant, string> = {
@@ -18,9 +19,9 @@ const variantIconStyles: Record<KpiCardVariant, string> = {
   success: 'text-success bg-success/10',
 }
 
-export function KpiCard({ label, value, icon, variant = 'default', trend }: KpiCardProps) {
+export function KpiCard({ label, value, icon, variant = 'default', trend, className }: KpiCardProps) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader className="flex items-center justify-between">
         <span className="text-sm text-muted-foreground">{label}</span>
         {icon && (

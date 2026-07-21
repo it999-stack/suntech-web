@@ -1,6 +1,6 @@
 "use client"
 
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 
 import {
   Collapsible,
@@ -33,6 +33,9 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const { pathname } = useLocation()
+  const isUrlActive = (url: string) => pathname === url || pathname.startsWith(`${url}/`)
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -40,7 +43,7 @@ export function NavMain({
         {items.map((item) => (
           <Collapsible
             key={item.title}
-            defaultOpen={item.isActive}
+            defaultOpen={item.isActive || item.items?.some((subItem) => isUrlActive(subItem.url))}
             className="group/collapsible"
             render={<SidebarMenuItem />}
           >
@@ -55,7 +58,10 @@ export function NavMain({
               <SidebarMenuSub>
                 {item.items?.map((subItem) => (
                   <SidebarMenuSubItem key={subItem.title}>
-                    <SidebarMenuSubButton render={<Link to={subItem.url} />}>
+                    <SidebarMenuSubButton
+                      isActive={isUrlActive(subItem.url)}
+                      render={<Link to={subItem.url} />}
+                    >
                       <span>{subItem.title}</span>
                     </SidebarMenuSubButton>
                   </SidebarMenuSubItem>
