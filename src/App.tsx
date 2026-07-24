@@ -4,6 +4,8 @@ import { RouterProvider } from 'react-router-dom'
 import { router } from '@/app/AppRouter'
 import { queryClient } from '@/lib/queryClient'
 import { useAuthStore } from '@/modules/auth/store/authStore'
+import { EmptyState } from '@/components/EmptyState'
+import { GlobalQueryProgress } from '@/components/GlobalQueryProgress'
 
 function App() {
   const [isBootstrapping, setIsBootstrapping] = useState(true)
@@ -22,14 +24,19 @@ function App() {
 
   if (isBootstrapping) {
     return (
-      <div className="flex min-h-svh items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
+      <div className="flex min-h-screen items-center justify-center">
+        <EmptyState
+          loading
+          title="Loading dashboard..."
+          description="Please wait while we prepare everything."
+        />
       </div>
     )
   }
 
   return (
     <QueryClientProvider client={queryClient}>
+      <GlobalQueryProgress />
       <RouterProvider router={router} />
     </QueryClientProvider>
   )

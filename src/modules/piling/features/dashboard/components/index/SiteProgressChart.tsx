@@ -11,9 +11,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { EmptyState } from '@/components/EmptyState'
+import { ChartTooltip, type ChartTooltipPayloadEntry } from '@/components/ChartTooltip'
 import { TrendingUpIcon } from 'lucide-react'
-import { useSiteProgressHistory } from '../hooks/useDashboardQueries'
-import type { SiteProgress, SiteProgressHistory } from '../types/dashboard.types'
+import { formatAxisDate, formatTooltipDate, today } from '@/lib/date'
+import { useSiteProgressHistory } from '../../hooks/useDashboardQueries'
+import { ACTUAL_COLOR, PLANNED_COLOR } from '../../lib/chartColors'
+import type { SiteProgress, SiteProgressHistory } from '../../types/dashboard.types'
 
 interface SiteProgressChartProps {
   sites: SiteProgress[]
@@ -27,96 +30,30 @@ interface ChartPoint {
   planned: number | null
 }
 
-// Actual = categorical slot 1 (blue), Planned = slot 4 (amber) — reusing the
-// app's own --chart-* tokens so light/dark swap for free instead of hardcoding hex.
-const ACTUAL_COLOR = 'var(--color-chart-1)'
-const PLANNED_COLOR = 'var(--color-chart-4)'
+// Both lines are real generated-plan/actual-completion data from the API,
+// bucketed by checklist date — not a projection, so the range is just
+// whatever dates have history, plus today (so the actual line still reaches
+// "now" even without a checklist dated exactly today).
+function buildChartPoints(history: SiteProgressHistory | undefined): ChartPoint[] {
+  const historyPoints = history?.points ?? []
+  if (historyPoints.length === 0) return []
 
-function formatAxisDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-}
+  const todayStr = today()
+  const dates = new Set<string>(historyPoints.map((p) => p.date))
+  dates.add(todayStr)
 
-function formatTooltipDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function toDateOnly(isoOrDate: string): string {
-  return isoOrDate.slice(0, 10)
-}
-
-// Anchors the timeline on the site's creation date and today, not just dates
-// with completed piles — so a site with a target end date but zero progress
-// yet still renders a planned line (and a flat actual line at 0) instead of
-// an empty state.
-function buildChartPoints(
-  history: SiteProgressHistory | undefined,
-  targetEndDate: string | null,
-  siteCreatedAt: string | null
-): ChartPoint[] {
-  const actualPoints = history?.points ?? []
-  const totalPiles = history?.totalPiles ?? 0
-  const todayStr = toDateOnly(new Date().toISOString())
-
-  const startCandidates = [siteCreatedAt ? toDateOnly(siteCreatedAt) : null, actualPoints[0]?.date ?? null].filter(
-    (d): d is string => !!d
-  )
-  if (startCandidates.length === 0 && !targetEndDate) return []
-  const startDate = startCandidates.length > 0 ? startCandidates.reduce((a, b) => (a < b ? a : b)) : todayStr
-
-  const dates = new Set<string>([startDate])
-  actualPoints.forEach((p) => dates.add(p.date))
-  if (targetEndDate) dates.add(targetEndDate)
-  if (!targetEndDate || todayStr <= targetEndDate) dates.add(todayStr)
-
-  const start = new Date(`${startDate}T00:00:00`).getTime()
-  const end = targetEndDate ? new Date(`${targetEndDate}T00:00:00`).getTime() : start
-  const span = Math.max(end - start, 1)
-
-  const actualByDate = new Map(actualPoints.map((p) => [p.date, p.actualCumulative]))
+  const actualByDate = new Map(historyPoints.map((p) => [p.date, p.actualCumulative]))
+  const plannedByDate = new Map(historyPoints.map((p) => [p.date, p.plannedCumulative]))
   let runningActual = 0
+  let runningPlanned = 0
 
   return Array.from(dates)
     .sort()
     .map((date) => {
-      if (actualByDate.has(date)) runningActual = actualByDate.get(date) as number
-      const t = new Date(`${date}T00:00:00`).getTime()
-      const ratio = targetEndDate ? Math.min(Math.max((t - start) / span, 0), 1) : null
-
-      return {
-        date,
-        label: formatAxisDate(date),
-        actual: date <= todayStr ? runningActual : null,
-        planned: ratio === null ? null : Math.round(ratio * totalPiles),
-      }
+      runningActual = actualByDate.get(date) ?? runningActual
+      runningPlanned = plannedByDate.get(date) ?? runningPlanned
+      return { date, label: formatAxisDate(date), actual: runningActual, planned: runningPlanned }
     })
-}
-
-function ChartTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null
-  const date: string = payload[0]?.payload?.date
-  return (
-    <div className="min-w-40 rounded-lg bg-white p-3 text-sm shadow-lg ring-1 ring-foreground/10 dark:bg-neutral-900">
-      {date && <div className="mb-2 font-medium text-foreground">{formatTooltipDate(date)}</div>}
-      <div className="flex flex-col gap-1.5">
-        {payload.map((entry: any) => (
-          <div key={entry.dataKey} className="flex items-center gap-2">
-            <span
-              className="h-0.5 w-3 rounded-full"
-              style={{ backgroundColor: entry.dataKey === 'actual' ? ACTUAL_COLOR : PLANNED_COLOR }}
-            />
-            <span className="text-muted-foreground">{entry.name}</span>
-            <span className="ml-auto font-semibold tabular-nums text-foreground">
-              {entry.value ?? '—'}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressChartProps) {
@@ -127,10 +64,7 @@ export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressCha
   const historyQuery = useSiteProgressHistory(activeSiteId, defaultSiteId, defaultSiteHistory)
   const selectedSite = sites.find((s) => s.siteId === activeSiteId)
 
-  const chartPoints = useMemo(
-    () => buildChartPoints(historyQuery.data, selectedSite?.targetEndDate ?? null, selectedSite?.createdAt ?? null),
-    [historyQuery.data, selectedSite?.targetEndDate, selectedSite?.createdAt]
-  )
+  const chartPoints = useMemo(() => buildChartPoints(historyQuery.data), [historyQuery.data])
 
   // Base UI's <Select.Value> only resolves a human label when `items` is
   // supplied — without it, it falls back to rendering the raw value (the
@@ -214,23 +148,32 @@ export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressCha
                   className="text-xs fill-muted-foreground"
                 />
                 <Tooltip
-                  content={<ChartTooltip />}
+                  content={({ active, payload }) => (
+                    <ChartTooltip
+                      active={active}
+                      payload={payload as readonly ChartTooltipPayloadEntry[] | undefined}
+                      formatLabel={(point) =>
+                        point && typeof point === 'object' && 'date' in point
+                          ? formatTooltipDate((point as ChartPoint).date)
+                          : null
+                      }
+                      colorForKey={(key) => (key === 'actual' ? ACTUAL_COLOR : PLANNED_COLOR)}
+                    />
+                  )}
                   cursor={{ stroke: 'var(--color-muted-foreground)', strokeDasharray: '4 4' }}
                 />
-                {selectedSite?.targetEndDate && (
-                  <Area
-                    type="monotone"
-                    dataKey="planned"
-                    name="Planned"
-                    stroke={PLANNED_COLOR}
-                    strokeWidth={2}
-                    strokeDasharray="4 4"
-                    fill="url(#siteProgressPlannedFill)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: PLANNED_COLOR, stroke: 'var(--color-chart-surface)', strokeWidth: 2 }}
-                    connectNulls
-                  />
-                )}
+                <Area
+                  type="monotone"
+                  dataKey="planned"
+                  name="Planned"
+                  stroke={PLANNED_COLOR}
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  fill="url(#siteProgressPlannedFill)"
+                  dot={false}
+                  activeDot={{ r: 4, fill: PLANNED_COLOR, stroke: 'var(--color-chart-surface)', strokeWidth: 2 }}
+                  connectNulls
+                />
                 <Area
                   type="monotone"
                   dataKey="actual"
@@ -245,11 +188,6 @@ export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressCha
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        )}
-        {selectedSite && !selectedSite.targetEndDate && chartPoints.length > 0 && (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Set a target end date on this site to see planned progress alongside actual.
-          </p>
         )}
       </CardContent>
     </Card>

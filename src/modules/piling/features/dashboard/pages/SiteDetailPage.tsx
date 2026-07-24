@@ -1,31 +1,30 @@
 import { useMemo, useState } from 'react'
+import { format } from 'date-fns'
 import { ArrowLeftIcon, CalendarIcon } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { EmptyState } from '@/components/EmptyState'
-import { StepPlanVsActualChart } from '../components/StepPlanVsActualChart'
-import { StepStatusTable } from '../components/StepStatusTable'
-import { buildStepDurationPoints } from '../api/siteDetail.api'
+import { dateOnly, parseDateStr, today } from '@/lib/date'
+import { SitePlanVsActualChart } from '../components/site-detail/SitePlanVsActualChart'
+import { StepStatusTable } from '../components/site-detail/StepStatusTable'
+import { buildSitePlanVsActualTimeline } from '../api/siteDetail.api'
 import { useChecklistDetail, usePlanState, useSite } from '../hooks/useSiteDetailQueries'
-
-function todayStr(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 export default function SiteDetailPage() {
   const { siteId } = useParams<{ siteId: string }>()
-  const [date, setDate] = useState(todayStr)
+  const [date, setDate] = useState(today)
 
   const siteQuery = useSite(siteId)
   const planStateQuery = usePlanState(siteId, date)
   const checklistQuery = useChecklistDetail(planStateQuery.data?.exists ? planStateQuery.data.checklistId : null)
 
   const rows = checklistQuery.data?.rows ?? []
-  const chartPoints = useMemo(() => buildStepDurationPoints(rows), [rows])
+  const chartPoints = useMemo(() => buildSitePlanVsActualTimeline(rows, date), [rows, date])
 
   const site = siteQuery.data
 
@@ -36,7 +35,6 @@ export default function SiteDetailPage() {
         className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeftIcon className="size-4" />
-        Back to dashboard
       </Link>
 
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -56,15 +54,19 @@ export default function SiteDetailPage() {
           )}
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CalendarIcon className="size-4" />
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-auto"
-          />
-        </label>
+        <Popover>
+          <PopoverTrigger render={<Button variant="outline" size="sm" className="gap-2 font-normal" />}>
+            <CalendarIcon className="size-4 text-muted-foreground" />
+            {format(parseDateStr(date), 'd MMM yyyy')}
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-auto p-2">
+            <Calendar
+              mode="single"
+              selected={parseDateStr(date)}
+              onSelect={(day) => day && setDate(dateOnly(day))}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       {planStateQuery.isLoading || (planStateQuery.data?.exists && checklistQuery.isLoading) ? (
@@ -75,7 +77,7 @@ export default function SiteDetailPage() {
       ) : !planStateQuery.data?.exists ? (
         <Card>
           <CardHeader>
-            <CardTitle>Step Status</CardTitle>
+            <CardTitle>Site Status</CardTitle>
           </CardHeader>
           <CardContent>
             <EmptyState
@@ -87,8 +89,8 @@ export default function SiteDetailPage() {
         </Card>
       ) : (
         <>
-          <StepPlanVsActualChart points={chartPoints} />
-          <StepStatusTable rows={rows} />
+          <SitePlanVsActualChart points={chartPoints} />
+          <StepStatusTable rows={rows} selectedDate={date} checklistId={planStateQuery.data.checklistId!} />
         </>
       )}
     </div>

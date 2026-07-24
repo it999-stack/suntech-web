@@ -12,22 +12,21 @@ import {
 } from '@/components/ui/table'
 import { EmptyState } from '@/components/EmptyState'
 import { ProgressBar } from '@/modules/shared/components/ProgressBar'
-import type { SiteProgress, SiteStatus } from '../types/dashboard.types'
+import type { StatusVisualBase } from '@/lib/statusVisual'
+import type { SiteProgress, SiteStatus } from '../../types/dashboard.types'
 
 interface SiteProgressTableProps {
   sites: SiteProgress[]
 }
 
-const statusLabel: Record<SiteStatus, string> = {
-  ON_TRACK: 'On track',
-  AT_RISK: 'At risk',
-  STALLED: 'Stalled',
+interface SiteStatusVisual extends StatusVisualBase {
+  badgeVariant: 'secondary' | 'outline' | 'destructive'
 }
 
-const statusVariant: Record<SiteStatus, 'secondary' | 'outline' | 'destructive'> = {
-  ON_TRACK: 'secondary',
-  AT_RISK: 'outline',
-  STALLED: 'destructive',
+const siteStatusVisuals: Record<SiteStatus, SiteStatusVisual> = {
+  ON_TRACK: { label: 'On track', badgeVariant: 'secondary' },
+  AT_RISK: { label: 'At risk', badgeVariant: 'outline' },
+  STALLED: { label: 'Stalled', badgeVariant: 'destructive' },
 }
 
 export function SiteProgressTable({ sites }: SiteProgressTableProps) {
@@ -76,7 +75,9 @@ export function SiteProgressTable({ sites }: SiteProgressTableProps) {
                   </TableCell>
                   <TableCell>{site.lastChecklistLabel}</TableCell>
                   <TableCell>
-                    <Badge variant={statusVariant[site.status]}>{statusLabel[site.status]}</Badge>
+                    <Badge variant={siteStatusVisuals[site.status].badgeVariant}>
+                      {siteStatusVisuals[site.status].label}
+                    </Badge>
                   </TableCell>
                 </TableRow>
               ))}

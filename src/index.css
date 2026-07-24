@@ -42,7 +42,7 @@
   --chart-4: oklch(0.4234 0.2370 263.9162);
   --chart-5: oklch(0.3742 0.1844 263.9420);
 
-  --sidebar: oklch(0.9846 0.0017 247.8389 / 0.55);
+  --sidebar: oklch(1.0000 0 0);
   --sidebar-foreground: oklch(0.3211 0 0);
   --sidebar-primary: oklch(0.6225 0.2041 259.9027);
   --sidebar-primary-foreground: oklch(1.0000 0 0);
@@ -62,7 +62,10 @@
   --info: #3B82F6;
   --info-foreground: #FFFFFF;
 
-  --radius: 1rem;
+  --waiting: #A855F7;
+  --waiting-foreground: #FFFFFF;
+
+  --radius: 0.7rem;
   --radius-badge: 0.5rem;
 
   --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -78,7 +81,7 @@
 .dark {
   /* ── from tweakcn ── */
   --background: oklch(0.2046 0 0);
-  --foreground: oklch(96.715% 0.00011 271.152);
+  --foreground: oklch(100% 0.00011 271.152);
 
   --card: oklch(0.2686 0 0 / 0.55);
   --card-foreground: oklch(0.9219 0 0);
@@ -131,6 +134,9 @@
   --info: #60A5FA;
   --info-foreground: #0B1220;
 
+  --waiting: #C084FC;
+  --waiting-foreground: #0B1220;
+
   --chart-surface: #0A0A0A;
   
   --chart-1: #3B82F6;
@@ -167,6 +173,8 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  --color-waiting: var(--waiting);
+  --color-waiting-foreground: var(--waiting-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

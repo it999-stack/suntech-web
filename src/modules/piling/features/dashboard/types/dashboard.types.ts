@@ -27,6 +27,7 @@ export interface SiteProgress {
 export interface ProgressHistoryPoint {
   date: string
   actualCumulative: number
+  plannedCumulative: number
 }
 
 export interface SiteProgressHistory {
@@ -45,6 +46,12 @@ export interface DashboardData {
 
 export type PilingTrack = 'RIG' | 'CRANE' | 'COMPRESSOR'
 export type PileLifecycle = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+export interface MachineSummary {
+  id: string
+  machineNo: string
+  type: PilingTrack
+}
 export type ChecklistStatus = 'DRAFT' | 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED'
 
 // Derived client-side from planned vs actual timestamps — the backend has no
@@ -67,11 +74,20 @@ export interface PlanState {
   status: ChecklistStatus | null
 }
 
+export interface ConcreteUsage {
+  plannedM3: number | null
+  actualM3: number | null
+}
+
 export interface ChecklistStepRow {
   checklistPileId: string
   pileSeqNo: number
   pileIdCode: string
   pileStatus: PileLifecycle
+  areaLocation: string | null
+  pileRig: MachineSummary
+  pileCrane: MachineSummary
+  concreteUsage: ConcreteUsage | null
   stepId: string
   stepName: string
   track: PilingTrack
@@ -80,7 +96,14 @@ export interface ChecklistStepRow {
   plannedEnd: string | null
   actualStart: string | null
   actualEnd: string | null
+  remarks: string | null
   status: StepStatus
+  durationMinutes: number | null
+  bufferMinutes: number | null
+  plannedMachine: MachineSummary | null
+  actualMachine: MachineSummary | null
+  totalApplicableSteps: number | null
+  isPlanComplete: boolean | null
 }
 
 export interface ChecklistDetail {
@@ -90,11 +113,11 @@ export interface ChecklistDetail {
   rows: ChecklistStepRow[]
 }
 
-// One bar-pair per step (aggregated across every pile in the checklist) —
-// feeds the plan-vs-actual chart.
-export interface StepDurationPoint {
-  stepName: string
-  sequenceOrder: number
-  plannedMinutes: number
-  actualMinutes: number
+// One point per hour tick across the selected day's working window — feeds
+// the site-level plan-vs-actual timeline chart (cumulative piles completed).
+export interface SitePlanVsActualPoint {
+  hourLabel: string
+  timeIso: string
+  plannedCumulative: number | null
+  actualCumulative: number | null
 }

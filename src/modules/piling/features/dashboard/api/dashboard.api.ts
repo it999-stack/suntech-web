@@ -117,6 +117,7 @@ interface RawSiteProgress {
 interface RawProgressHistoryPoint {
   date: string
   actual_cumulative: number
+  planned_cumulative: number
 }
 
 interface RawSiteProgressHistory {
@@ -155,7 +156,7 @@ function mapSiteProgress(raw: RawSiteProgress): SiteProgress {
 }
 
 function mapProgressHistoryPoint(raw: RawProgressHistoryPoint): ProgressHistoryPoint {
-  return { date: raw.date, actualCumulative: raw.actual_cumulative }
+  return { date: raw.date, actualCumulative: raw.actual_cumulative, plannedCumulative: raw.planned_cumulative }
 }
 
 function mapSiteProgressHistory(raw: RawSiteProgressHistory): SiteProgressHistory {

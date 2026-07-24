@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { InboxIcon } from 'lucide-react'
+import { InboxIcon, Loader2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -9,6 +9,7 @@ interface EmptyStateProps {
   description?: string
   action?: ReactNode
   className?: string
+  loading?: boolean
 }
 
 export function EmptyState({
@@ -17,20 +18,32 @@ export function EmptyState({
   description,
   action,
   className,
+  loading = false,
 }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center gap-2 py-12 text-center',
+        "flex min-h-[50vh] flex-col items-center justify-center px-6 text-center",
         className
       )}
     >
-      <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-        <Icon className="size-5" />
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border bg-muted/50">
+        {loading ? (
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        ) : (
+          <Icon className="h-8 w-8 text-muted-foreground" />
+        )}
       </div>
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      {description && <p className="max-w-sm text-sm text-muted-foreground">{description}</p>}
-      {action && <div className="mt-2">{action}</div>}
+
+      <h2 className="text-lg font-semibold">{title}</h2>
+
+      {description && (
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">
+          {description}
+        </p>
+      )}
+
+      {action && <div className="mt-6">{action}</div>}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { Progress as ProgressPrimitive } from '@base-ui/react/progress'
 import { ProgressTrack, ProgressIndicator } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { formatPercent } from '@/lib/number'
 
 interface ProgressBarProps {
   value: number
@@ -15,7 +16,7 @@ export function ProgressBar({ value, size = 'default', label, className }: Progr
       {label && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">{label}</span>
-          <span className="font-medium tabular-nums text-foreground">{Math.round(value)}%</span>
+          <span className="font-medium tabular-nums text-foreground">{formatPercent(value)}</span>
         </div>
       )}
       <ProgressTrack className={size === 'sm' ? 'h-1.5' : 'h-2.5'}>

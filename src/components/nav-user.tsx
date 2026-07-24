@@ -23,15 +23,7 @@ import {
 } from "@/components/ui/sidebar"
 import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react"
 import { useAuthStore } from "@/modules/auth/store/authStore"
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
-}
+import { initials } from "@/lib/string"
 
 export function NavUser({
   user,

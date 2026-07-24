@@ -3,19 +3,29 @@ import NProgress from 'nprogress'
 
 NProgress.configure({ showSpinner: false, trickleSpeed: 120, minimum: 0.12 })
 
-export const routeProgress = {
-  start: () => NProgress.start(),
-  done: () => NProgress.done(),
+// Reference-counted so multiple simultaneous callers (route nav + background
+// fetches) don't stomp on each other — the bar only clears once every caller
+// that started it has finished.
+let activeCount = 0
+
+function increment() {
+  activeCount += 1
+  if (activeCount === 1) NProgress.start()
 }
 
-/** Drives the same top progress bar from any React Query `isFetching` flag —
- * used for background refetches (filter/site change), not just route nav. */
-export function useQueryProgress(isFetching: boolean) {
+function decrement() {
+  activeCount = Math.max(0, activeCount - 1)
+  if (activeCount === 0) NProgress.done()
+}
+
+export const routeProgress = { start: increment, done: decrement }
+
+/** Drives the shared top progress bar while `active` is true. Safe to call from
+ * multiple places at once (route nav, per-query refetches, global fetch state). */
+export function useQueryProgress(active: boolean) {
   useEffect(() => {
-    if (isFetching) {
-      routeProgress.start()
-    } else {
-      routeProgress.done()
-    }
-  }, [isFetching])
+    if (!active) return
+    increment()
+    return () => decrement()
+  }, [active])
 }
