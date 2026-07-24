@@ -1,6 +1,6 @@
 import { differenceInMinutes } from 'date-fns'
 import { toLocalIsoString } from '@/lib/date'
-import type { ChecklistStepRow, MachineSummary } from '../../types/dashboard.types'
+import type { ChecklistStepRow, MachineSummary } from '../../../types/dashboard.types'
 import type { TimelineNodeKind } from '../status/stepStatusVisuals'
 
 // The buffer occupies the last `bufferMinutes` of a step's own planned

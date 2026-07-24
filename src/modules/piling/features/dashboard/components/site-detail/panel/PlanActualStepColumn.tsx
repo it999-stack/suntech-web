@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover"
 import { MessageSquareTextIcon } from 'lucide-react'
 import { formatDuration, formatTimeRange } from '@/lib/date'
-import type { ChecklistStepRow } from '../../types/dashboard.types'
+import type { ChecklistStepRow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
 import { computeStepDelay, formatDelta } from '../lib/timelineMath'
 

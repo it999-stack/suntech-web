@@ -4,7 +4,7 @@ import { Image } from '@/components/ui/image'
 import { cn } from '@/lib/utils'
 import craneImage from '@/assets/images/crane.png'
 import rigImage from '@/assets/images/rig.png'
-import type { MachineSummary, PilingTrack } from '../../types/dashboard.types'
+import type { MachineSummary, PilingTrack } from '../../../types/dashboard.types'
 
 export interface MachineCell {
   gridRowStart: number

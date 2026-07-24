@@ -1,6 +1,6 @@
 import { CircleAlertIcon, CircleCheckIcon, CircleDashedIcon, HourglassIcon, LoaderCircleIcon, type LucideIcon } from 'lucide-react'
 import type { StatusVisualBase } from '@/lib/statusVisual'
-import type { StepStatus } from '../../types/dashboard.types'
+import type { StepStatus } from '../../../types/dashboard.types'
 
 export type TimelineNodeKind = StepStatus | 'buffer'
 

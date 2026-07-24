@@ -22,7 +22,7 @@ interface PileTimelineFooterStatsProps {
 }
 
 // Single-ratio meter (steps completed / total) — a lighter step of the same
-function ProgressRing({ percent, completed, total }: { percent: number; completed: number; total: number }) {
+function ProgressRing({ percent }: { percent: number }) {
   const radius = 80
   const halfCircumference = Math.PI * radius
   const clamped = Math.min(100, Math.max(0, percent))
@@ -201,7 +201,7 @@ export function PileTimelineFooterStats({ rows }: PileTimelineFooterStatsProps) 
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center gap-3">
-          <ProgressRing percent={progress} completed={completedCount} total={rows.length} />
+          <ProgressRing percent={progress} />
           <div className="flex items-center gap-1.5 rounded-full bg-muted px-3 mt-[0px] text-xs font-medium text-muted-foreground">
             <CircleCheckIcon className="size-3.5" />
             {completedCount} of {rows.length} steps completed
