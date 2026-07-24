@@ -70,8 +70,15 @@ export function SiteProgressTable({ sites }: SiteProgressTableProps) {
                   <TableCell>{site.completedPiles}</TableCell>
                   <TableCell>{site.inProgressPiles}</TableCell>
                   <TableCell>{site.notStartedPiles}</TableCell>
-                  <TableCell className="min-w-32">
-                    <ProgressBar value={site.percentComplete} size="sm" />
+                  <TableCell className="min-w-36">
+                    <ProgressBar
+                      value={site.percentComplete}
+                      completed={site.completedPiles}
+                      inProgress={site.inProgressPiles}
+                      total={site.totalPiles}
+                      size="sm"
+                      showValue
+                    />
                   </TableCell>
                   <TableCell>{site.lastChecklistLabel}</TableCell>
                   <TableCell>
