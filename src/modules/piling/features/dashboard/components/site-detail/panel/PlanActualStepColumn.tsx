@@ -13,7 +13,7 @@ import { MessageSquareTextIcon } from 'lucide-react'
 import { formatDuration, formatTimeRange } from '@/lib/date'
 import type { ChecklistStepRow, MachineDowntimeWindow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
-import { computeActivityDelay, computeStartDelay, formatDelta } from '../lib/timelineMath'
+import { computeActivityDelay, computeStartDelay, formatDelta, stepWorkStart } from '../lib/timelineMath'
 
 export interface StepCell {
   gridRow: number
@@ -35,7 +35,7 @@ export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = []
         const hasActual = mode === 'actual' ? !!row.actualStart : true
         const visual = stepStatusVisuals[row.status]
         const StatusIcon = visual.icon
-        const start = mode === 'planned' ? row.plannedStart : row.actualStart
+        const start = mode === 'planned' ? stepWorkStart(row) : row.actualStart
         const end = mode === 'planned' ? row.plannedEnd : row.actualEnd
 
         // Delay only makes sense on the actual column — planned has nothing to compare against.
@@ -97,8 +97,8 @@ export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = []
                   {hasActual ? formatTimeRange(start, end) : '—'}
                   {startDelay && (
                     <span
-                      className={`text-[10px] font-semibold ${
-                        startDeltaMinutes! > 0 ? 'text-amber-600' : 'text-emerald-600'
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${
+                        startDeltaMinutes! > 0 ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
                       }`}
                     >
                       start {startDelay}
@@ -115,8 +115,8 @@ export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = []
                   {formatDuration(row.durationMinutes)}
                   {activityDelay && (
                     <span
-                      className={`text-[10px] font-semibold ${
-                        activityDeltaMinutes! > 0 ? 'text-amber-600' : 'text-emerald-600'
+                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${
+                        activityDeltaMinutes! > 0 ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
                       }`}
                     >
                       activity {activityDelay}

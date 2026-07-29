@@ -1,5 +1,6 @@
 import { differenceInMinutes } from 'date-fns'
 import { addMinutesIso, toLocalIsoString } from '@/lib/date'
+import { byNumber } from '@/lib/sort'
 import { resolvePlannedEnd } from '../../../api/siteDetail.api'
 import type { ChecklistStepRow, MachineDowntimeWindow, MachineSummary } from '../../../types/dashboard.types'
 import type { TimelineNodeKind } from '../status/stepStatusVisuals'
@@ -9,6 +10,15 @@ import type { TimelineNodeKind } from '../status/stepStatusVisuals'
 // a gap after it. This locates where work ends and buffer begins.
 function addMinutes(iso: string, minutes: number): string {
   return toLocalIsoString(new Date(new Date(iso).getTime() + minutes * 60_000))
+}
+
+// When a step's actual work begins — plannedStart marks when its buffer
+// period starts, not when work does (mirrors stepWorkStart() in the mobile
+// app's utils/helpers.ts). plannedEnd is unaffected either way, since it's
+// already stored as plannedStart + buffer + duration.
+export function stepWorkStart(row: ChecklistStepRow): string | null {
+  if (!row.plannedStart) return null
+  return addMinutesIso(row.plannedStart, row.bufferMinutes ?? 0)
 }
 
 export interface TimelineNode {
@@ -187,4 +197,56 @@ export function formatDelta(minutes: number | null): string | null {
   if (minutes === null || minutes === 0) return null
   const sign = minutes > 0 ? '+' : '−'
   return `${sign}${Math.abs(minutes)} min`
+}
+
+export interface DelayTotals {
+  totalStartDelayMinutes: number | null
+  totalActivityDelayMinutes: number | null
+}
+
+// Sums start/activity delay across every row that has one — grouped by
+// checklistPileId internally so each pile's own previous-step chain is used
+// regardless of whether `rows` is a single pile (sheet footer) or every pile
+// on the site for the day (site-wide summary card). A pile with no rows that
+// have an actualStart yet contributes nothing (not a 0), so a totally
+// unstarted day comes back `null`, not a misleading "0 min delay".
+export function computeDelayTotals(
+  rows: ChecklistStepRow[],
+  downtimeWindows: MachineDowntimeWindow[],
+  planStartTime: string | null,
+  now: Date
+): DelayTotals {
+  const byPile = new Map<string, ChecklistStepRow[]>()
+  for (const row of rows) {
+    const list = byPile.get(row.checklistPileId)
+    if (list) list.push(row)
+    else byPile.set(row.checklistPileId, [row])
+  }
+
+  let totalStart = 0
+  let startCount = 0
+  let totalActivity = 0
+  let activityCount = 0
+
+  for (const pileRows of byPile.values()) {
+    const sorted = [...pileRows].sort(byNumber((row) => row.sequenceOrder))
+    sorted.forEach((row, index) => {
+      const previousRow = index > 0 ? sorted[index - 1] : null
+      const startDelta = computeStartDelay(row, previousRow, planStartTime)
+      if (startDelta !== null) {
+        totalStart += startDelta
+        startCount++
+      }
+      const activityDelta = computeActivityDelay(row, downtimeWindows, now)
+      if (activityDelta !== null) {
+        totalActivity += activityDelta
+        activityCount++
+      }
+    })
+  }
+
+  return {
+    totalStartDelayMinutes: startCount > 0 ? totalStart : null,
+    totalActivityDelayMinutes: activityCount > 0 ? totalActivity : null,
+  }
 }

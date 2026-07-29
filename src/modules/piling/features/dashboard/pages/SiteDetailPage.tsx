@@ -11,6 +11,8 @@ import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { dateOnly, parseDateStr, today } from '@/lib/date'
+import { DelaySummaryCard } from '../components/site-detail/DelaySummaryCard'
+import { computeDelayTotals } from '../components/site-detail/lib/timelineMath'
 import { RangePileTable } from '../components/site-detail/RangePileTable'
 import { SitePlanVsActualChart } from '../components/site-detail/SitePlanVsActualChart'
 import { SiteProgressRangeChart } from '../components/site-detail/SiteProgressRangeChart'
@@ -44,6 +46,16 @@ export default function SiteDetailPage() {
   const rangeChartPoints = useMemo(
     () => buildRangeChartPoints(progressHistoryQuery.data, range.from, range.to),
     [progressHistoryQuery.data, range.from, range.to]
+  )
+  const delayTotals = useMemo(
+    () =>
+      computeDelayTotals(
+        rows,
+        checklistQuery.data?.downtimeWindows ?? [],
+        checklistQuery.data?.planStartTime ?? null,
+        new Date()
+      ),
+    [rows, checklistQuery.data?.downtimeWindows, checklistQuery.data?.planStartTime]
   )
 
   const site = siteQuery.data
@@ -125,6 +137,11 @@ export default function SiteDetailPage() {
       ) : (
         <>
           <SitePlanVsActualChart points={chartPoints} />
+          <DelaySummaryCard
+            title="Overall Delay — All Piles"
+            totalStartDelayMinutes={delayTotals.totalStartDelayMinutes}
+            totalActivityDelayMinutes={delayTotals.totalActivityDelayMinutes}
+          />
           <StepStatusTable
             rows={rows}
             selectedDate={range.from}
