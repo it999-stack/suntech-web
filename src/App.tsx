@@ -5,7 +5,6 @@ import { router } from '@/app/AppRouter'
 import { queryClient } from '@/lib/queryClient'
 import { useAuthStore } from '@/modules/auth/store/authStore'
 import { EmptyState } from '@/components/EmptyState'
-import { GlobalQueryProgress } from '@/components/GlobalQueryProgress'
 
 function App() {
   const [isBootstrapping, setIsBootstrapping] = useState(true)
@@ -36,7 +35,6 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GlobalQueryProgress />
       <RouterProvider router={router} />
     </QueryClientProvider>
   )

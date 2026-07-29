@@ -1,15 +1,35 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { sitesService } from '../api/sites.api'
-import type { UpdateSitePayload } from '../types/sites.types'
+import type { SitePileListParams, UpdateSitePayload } from '../types/sites.types'
 
 export const sitesQueryKeys = {
   list: ['piling-sites'] as const,
+  detail: (siteId: string) => ['piling-sites', siteId] as const,
+  piles: (siteId: string, params: SitePileListParams) =>
+    ['piling-sites', siteId, 'piles', params] as const,
 }
 
 export function useSites() {
   return useQuery({
     queryKey: sitesQueryKeys.list,
     queryFn: sitesService.getSites,
+  })
+}
+
+export function useSite(siteId: string | undefined) {
+  return useQuery({
+    queryKey: sitesQueryKeys.detail(siteId ?? ''),
+    queryFn: () => sitesService.getSiteById(siteId as string),
+    enabled: !!siteId,
+  })
+}
+
+export function useSitePiles(siteId: string | undefined, params: SitePileListParams) {
+  return useQuery({
+    queryKey: sitesQueryKeys.piles(siteId ?? '', params),
+    queryFn: () => sitesService.getSitePiles(siteId as string, params),
+    enabled: !!siteId,
+    placeholderData: keepPreviousData,
   })
 }
 

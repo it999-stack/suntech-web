@@ -1,5 +1,11 @@
 import { apiClient } from '@/lib/apiClient'
-import type { SiteListItem, UpdateSitePayload } from '../types/sites.types'
+import type {
+  SiteListItem,
+  SitePileListItem,
+  SitePileListParams,
+  SitePilePage,
+  UpdateSitePayload,
+} from '../types/sites.types'
 
 interface RawSiteListItem {
   id: string
@@ -9,6 +15,26 @@ interface RawSiteListItem {
   total_piles: number
   completed_piles: number
   percent_complete: number
+}
+
+interface RawSite {
+  id: string
+  name: string
+  location: string | null
+}
+
+interface RawSitePileListItem {
+  id: string
+  pile_id_code: string
+  area_location: string | null
+  status: SitePileListItem['status']
+}
+
+interface RawSitePilePage {
+  items: RawSitePileListItem[]
+  total: number
+  page: number
+  limit: number
 }
 
 function mapSiteListItem(raw: RawSiteListItem): SiteListItem {
@@ -24,9 +50,39 @@ function mapSiteListItem(raw: RawSiteListItem): SiteListItem {
   }
 }
 
+function mapSitePileListItem(raw: RawSitePileListItem): SitePileListItem {
+  return {
+    id: raw.id,
+    pileIdCode: raw.pile_id_code,
+    areaLocation: raw.area_location,
+    status: raw.status,
+  }
+}
+
 async function getSites(): Promise<SiteListItem[]> {
   const { data } = await apiClient.get<RawSiteListItem[]>('/piling/sites')
   return data.map(mapSiteListItem)
+}
+
+async function getSiteById(siteId: string): Promise<{ id: string; name: string; location: string | null }> {
+  const { data } = await apiClient.get<RawSite>(`/piling/sites/${siteId}`)
+  return { id: data.id, name: data.name, location: data.location }
+}
+
+async function getSitePiles(siteId: string, params: SitePileListParams): Promise<SitePilePage> {
+  const { data } = await apiClient.get<RawSitePilePage>(`/piling/sites/${siteId}/piles`, {
+    params: {
+      page: params.page,
+      limit: params.limit,
+      search: params.search || undefined,
+    },
+  })
+  return {
+    items: data.items.map(mapSitePileListItem),
+    total: data.total,
+    page: data.page,
+    limit: data.limit,
+  }
 }
 
 async function updateSite(siteId: string, payload: UpdateSitePayload): Promise<void> {
@@ -35,5 +91,7 @@ async function updateSite(siteId: string, payload: UpdateSitePayload): Promise<v
 
 export const sitesService = {
   getSites,
+  getSiteById,
+  getSitePiles,
   updateSite,
 }

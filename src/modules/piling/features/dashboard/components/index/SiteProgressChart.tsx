@@ -13,7 +13,7 @@ import {
 import { EmptyState } from '@/components/EmptyState'
 import { ChartTooltip, type ChartTooltipPayloadEntry } from '@/components/ChartTooltip'
 import { TrendingUpIcon } from 'lucide-react'
-import { formatAxisDate, formatTooltipDate, today } from '@/lib/date'
+import { formatAxisDate, formatTooltipDate } from '@/lib/date'
 import { useSiteProgressHistory } from '../../hooks/useDashboardQueries'
 import { ACTUAL_COLOR, PLANNED_COLOR } from '../../lib/chartColors'
 import type { SiteProgress, SiteProgressHistory } from '../../types/dashboard.types'
@@ -36,24 +36,16 @@ interface ChartPoint {
 // "now" even without a checklist dated exactly today).
 function buildChartPoints(history: SiteProgressHistory | undefined): ChartPoint[] {
   const historyPoints = history?.points ?? []
-  if (historyPoints.length === 0) return []
 
-  const todayStr = today()
-  const dates = new Set<string>(historyPoints.map((p) => p.date))
-  dates.add(todayStr)
-
-  const actualByDate = new Map(historyPoints.map((p) => [p.date, p.actualCumulative]))
-  const plannedByDate = new Map(historyPoints.map((p) => [p.date, p.plannedCumulative]))
-  let runningActual = 0
-  let runningPlanned = 0
-
-  return Array.from(dates)
-    .sort()
-    .map((date) => {
-      runningActual = actualByDate.get(date) ?? runningActual
-      runningPlanned = plannedByDate.get(date) ?? runningPlanned
-      return { date, label: formatAxisDate(date), actual: runningActual, planned: runningPlanned }
-    })
+  return historyPoints
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((point) => ({
+      date: point.date,
+      label: formatAxisDate(point.date),
+      actual: point.actualCumulative,
+      planned: point.plannedCumulative,
+    }))
 }
 
 export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressChartProps) {
@@ -63,7 +55,6 @@ export function SiteProgressChart({ sites, defaultSiteHistory }: SiteProgressCha
 
   const historyQuery = useSiteProgressHistory(activeSiteId, defaultSiteId, defaultSiteHistory)
   const selectedSite = sites.find((s) => s.siteId === activeSiteId)
-
   const chartPoints = useMemo(() => buildChartPoints(historyQuery.data), [historyQuery.data])
 
   // Base UI's <Select.Value> only resolves a human label when `items` is

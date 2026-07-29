@@ -87,6 +87,8 @@ export interface ChecklistStepRow {
   areaLocation: string | null
   pileRig: MachineSummary
   pileCrane: MachineSummary
+  dimensionDiaMm: number | null
+  dimensionDepthM: number | null
   concreteUsage: ConcreteUsage | null
   stepId: string
   stepName: string
@@ -106,11 +108,39 @@ export interface ChecklistStepRow {
   isPlanComplete: boolean | null
 }
 
+// A closed (or still-open, `end: null`) BREAKDOWN→RESUMED interval for one
+// track, paired server-side from raw machine events — see
+// downtime_service.compute_downtime_windows() in suntech-core.
+export interface MachineDowntimeWindow {
+  track: PilingTrack
+  start: string
+  end: string | null
+  machineId: string | null
+  notes: string | null
+}
+
 export interface ChecklistDetail {
   checklistId: string
   date: string
   status: ChecklistStatus
+  planStartTime: string | null
   rows: ChecklistStepRow[]
+  downtimeWindows: MachineDowntimeWindow[]
+}
+
+// Lightweight per-pile row for the Site Detail page's range pile table — sums
+// progress across every day the pile appeared within the picked range. No
+// per-step timestamps, so unlike StepStatus this can't distinguish "delayed"
+// from "in progress"; full step detail is fetched lazily per pile instead.
+export interface PileProgressRow {
+  id: string
+  pileIdCode: string
+  areaLocation: string | null
+  status: PileLifecycle
+  completedSteps: number
+  totalSteps: number
+  rig: MachineSummary
+  crane: MachineSummary
 }
 
 // One point per hour tick across the selected day's working window — feeds
@@ -120,4 +150,14 @@ export interface SitePlanVsActualPoint {
   timeIso: string
   plannedCumulative: number | null
   actualCumulative: number | null
+}
+
+// One point per day within a picked date range — feeds the site-detail
+// multi-day range chart, sourced from the same daily-cumulative history as
+// the dashboard-index SiteProgressChart.
+export interface RangeChartPoint {
+  date: string
+  label: string
+  actual: number | null
+  planned: number | null
 }

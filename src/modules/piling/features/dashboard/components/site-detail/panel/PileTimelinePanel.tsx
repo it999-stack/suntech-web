@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { CalendarClockIcon, ClipboardCheckIcon } from 'lucide-react'
 import { dateOnly, formatTime } from '@/lib/date'
 import { byNumber } from '@/lib/sort'
-import type { ChecklistStepRow } from '../../../types/dashboard.types'
+import type { ChecklistStepRow, MachineDowntimeWindow } from '../../../types/dashboard.types'
 import { MachineRail } from './MachineRail'
 import { PileTimelineFooterStats } from './PileTimelineFooterStats'
 import { PlanActualStepColumn } from './PlanActualStepColumn'
@@ -12,6 +12,8 @@ import { buildTimelineLayout, findCurrentNodeIndex, groupConsecutiveMachines } f
 interface PileTimelinePanelProps {
   rows: ChecklistStepRow[]
   selectedDate: string // 'YYYY-MM-DD'
+  downtimeWindows?: MachineDowntimeWindow[]
+  planStartTime?: string | null
 }
 
 function isToday(dateStr: string): boolean {
@@ -49,7 +51,7 @@ function SectionHeader({
   )
 }
 
-export function PileTimelinePanel({ rows, selectedDate }: PileTimelinePanelProps) {
+export function PileTimelinePanel({ rows, selectedDate, downtimeWindows = [], planStartTime = null }: PileTimelinePanelProps) {
   const sortedRows = useMemo(() => [...rows].sort(byNumber((row) => row.sequenceOrder)), [rows])
 
   const { nodes, stepContentRow, totalContentRows } = useMemo(() => buildTimelineLayout(sortedRows), [sortedRows])
@@ -96,14 +98,6 @@ export function PileTimelinePanel({ rows, selectedDate }: PileTimelinePanelProps
 
   return (
     <div className="flex flex-col gap-4 px-4">
-      {/* No overflow-x-auto here on purpose: any non-`visible` overflow value on
-          this wrapper would make it a scroll container, which becomes the
-          reference frame `position: sticky` measures against in MachineRail —
-          for both axes, not just the one being scrolled. Since this div has no
-          height constraint, that frame would never actually move, so sticky
-          would silently never engage. Horizontal scrolling for this wide grid
-          is instead handled by the sheet's single overflow-auto body, so
-          sticky keeps resolving against the ancestor that's really scrolling. */}
       <div className="rounded-lg">
         <div
           className="grid w-full min-w-[980px] gap-y-1 px-3"
@@ -129,11 +123,21 @@ export function PileTimelinePanel({ rows, selectedDate }: PileTimelinePanelProps
             nowLabel={nowLabel}
             column={COLUMNS.timeline}
           />
-          <PlanActualStepColumn cells={stepCells} mode="actual" column={COLUMNS.actualSteps} />
+          <PlanActualStepColumn
+            cells={stepCells}
+            mode="actual"
+            column={COLUMNS.actualSteps}
+            downtimeWindows={downtimeWindows}
+            planStartTime={planStartTime}
+          />
           <MachineRail cells={actualMachineCells} column={COLUMNS.actualMachines} side="left" />
         </div>
       </div>
-      <PileTimelineFooterStats rows={sortedRows} />
+      <PileTimelineFooterStats
+        rows={rows}
+        diameterMm={rows[0]?.dimensionDiaMm ?? undefined}
+        totalDepthM={rows[0]?.dimensionDepthM ?? undefined}
+      />
     </div>
   )
 }

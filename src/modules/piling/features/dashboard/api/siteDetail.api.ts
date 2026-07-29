@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient'
-import { dateOnly, formatHourLabel, hourCeil, hourFloor } from '@/lib/date'
+import { addMinutesIso, dateOnly, formatAxisDate, formatHourLabel, hourCeil, hourFloor } from '@/lib/date'
 import { byNumber } from '@/lib/sort'
 import { groupBy } from '@/lib/collections'
 import type {
@@ -7,12 +7,16 @@ import type {
   ChecklistStatus,
   ChecklistStepRow,
   ConcreteUsage,
+  MachineDowntimeWindow,
   MachineSummary,
   PileLifecycle,
+  PileProgressRow,
   PilingTrack,
   PlanState,
+  RangeChartPoint,
   SiteDetail,
   SitePlanVsActualPoint,
+  SiteProgressHistory,
   StepStatus,
 } from '../types/dashboard.types'
 
@@ -67,9 +71,15 @@ interface RawActualStep {
   step: RawStepSummary
 }
 
+interface RawDimension {
+  dia: number
+  depth: number
+}
+
 interface RawPileSummary {
   pile_id_code: string
   area_location: string | null
+  dimension: RawDimension | null
 }
 
 interface RawConcreteUsage {
@@ -92,11 +102,32 @@ interface RawChecklistPile {
   is_plan_complete: boolean | null
 }
 
+interface RawDowntimeWindow {
+  track: PilingTrack
+  start: string
+  end: string | null
+  machine_id: string | null
+  notes: string | null
+}
+
 interface RawChecklist {
   id: string
   date: string
   status: ChecklistStatus
+  plan_start_time: string | null
   checklist_piles: RawChecklistPile[]
+  downtime_windows: RawDowntimeWindow[]
+}
+
+interface RawPileProgress {
+  id: string
+  pile_id_code: string
+  area_location: string | null
+  status: PileLifecycle
+  completed_steps: number
+  total_steps: number
+  rig: RawMachineSummary
+  crane: RawMachineSummary
 }
 
 function mapSite(raw: RawSite): SiteDetail {
@@ -112,6 +143,10 @@ function mapSite(raw: RawSite): SiteDetail {
 
 function mapMachine(raw: RawMachineSummary): MachineSummary {
   return { id: raw.id, machineNo: raw.machine_no, type: raw.type }
+}
+
+function mapDowntimeWindow(raw: RawDowntimeWindow): MachineDowntimeWindow {
+  return { track: raw.track, start: raw.start, end: raw.end, machineId: raw.machine_id, notes: raw.notes }
 }
 
 // Actual-machine tracking doesn't exist per-step (PileActualStep has no
@@ -144,10 +179,13 @@ function mapConcreteUsage(raw: RawConcreteUsage | null): ConcreteUsage | null {
   return { plannedM3: raw.planned_qty_m3, actualM3: raw.actual_qty_m3 }
 }
 
-function buildStepRows(raw: RawChecklist, now: Date): ChecklistStepRow[] {
+// Shared by the single-day whole-checklist fetch and the range per-pile-steps
+// fetch (a list of one RawChecklistPile per day the pile appeared in) — both
+// are just "some set of pile-day slices", flattened into one step-per-row.
+function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date): ChecklistStepRow[] {
   const rows: ChecklistStepRow[] = []
 
-  for (const pile of raw.checklist_piles) {
+  for (const pile of pileDays) {
     const actualByStepId = new Map(pile.actual_steps.map((a) => [a.step_id, a]))
 
     for (const planStep of pile.plan_steps) {
@@ -160,6 +198,8 @@ function buildStepRows(raw: RawChecklist, now: Date): ChecklistStepRow[] {
         areaLocation: pile.pile.area_location,
         pileRig: mapMachine(pile.rig),
         pileCrane: mapMachine(pile.crane),
+        dimensionDiaMm: pile.pile.dimension?.dia ?? null,
+        dimensionDepthM: pile.pile.dimension?.depth ?? null,
         concreteUsage: mapConcreteUsage(pile.concrete_usage),
         stepId: planStep.step_id,
         stepName: planStep.step.step_name,
@@ -181,7 +221,41 @@ function buildStepRows(raw: RawChecklist, now: Date): ChecklistStepRow[] {
     }
   }
 
-  return rows.sort(byNumber((r) => r.sequenceOrder, (r) => r.pileSeqNo))
+  // A resume day replans its boundary step even though that step already had
+  // a row the day before (sequence_order >= resume_order, inclusive — see
+  // plan_generation_service.py), so the same stepId can appear twice when
+  // pileDays spans multiple days. Keep the later occurrence (pileDays is
+  // date-ascending) — it's the more recent/authoritative attempt.
+  const byStepId = new Map(rows.map((row) => [row.stepId, row]))
+  return Array.from(byStepId.values()).sort(byNumber((r) => r.sequenceOrder, (r) => r.pileSeqNo))
+}
+
+function buildStepRows(raw: RawChecklist, now: Date): ChecklistStepRow[] {
+  return buildStepRowsForPileDays(raw.checklist_piles, now)
+}
+
+function mapPileProgress(raw: RawPileProgress): PileProgressRow {
+  return {
+    id: raw.id,
+    pileIdCode: raw.pile_id_code,
+    areaLocation: raw.area_location,
+    status: raw.status,
+    completedSteps: raw.completed_steps,
+    totalSteps: raw.total_steps,
+    rig: mapMachine(raw.rig),
+    crane: mapMachine(raw.crane),
+  }
+}
+
+// A step's `planned_end` is nulled out server-side whenever its natural end
+// would run past the plan window (see plan_generation_service.py) — it means
+// "still continuing", not "no data". Falling back to `plannedStart` in that
+// case would count the step as completing the instant it starts, so derive
+// the true projected end from its own duration/buffer instead.
+export function resolvePlannedEnd(row: ChecklistStepRow): string | null {
+  if (row.plannedEnd) return row.plannedEnd
+  if (!row.plannedStart) return null
+  return addMinutesIso(row.plannedStart, (row.durationMinutes ?? 0) + (row.bufferMinutes ?? 0))
 }
 
 // One point per hour tick across the day's planned working window — feeds the
@@ -196,7 +270,7 @@ export function buildSitePlanVsActualTimeline(rows: ChecklistStepRow[], selected
   )
 
   const plannedCompletions = finalSteps
-    .map((row) => row.plannedEnd ?? row.plannedStart)
+    .map(resolvePlannedEnd)
     .filter((iso): iso is string => !!iso)
     .sort()
   const actualCompletions = finalSteps
@@ -206,7 +280,7 @@ export function buildSitePlanVsActualTimeline(rows: ChecklistStepRow[], selected
 
   const allStarts = rows.map((r) => r.plannedStart).filter((iso): iso is string => !!iso)
   const allEnds = [
-    ...rows.map((r) => r.plannedEnd).filter((iso): iso is string => !!iso),
+    ...rows.map(resolvePlannedEnd).filter((iso): iso is string => !!iso),
     ...rows.map((r) => r.actualEnd).filter((iso): iso is string => !!iso),
   ]
   if (allStarts.length === 0 || allEnds.length === 0) return []
@@ -237,6 +311,23 @@ export function buildSitePlanVsActualTimeline(rows: ChecklistStepRow[], selected
   return points
 }
 
+// Slices the site's full (unfiltered) progress history down to the picked
+// date range, for the multi-day range chart — same daily-cumulative points
+// the dashboard-index SiteProgressChart already renders, just bounded.
+export function buildRangeChartPoints(history: SiteProgressHistory | undefined, from: string, to: string): RangeChartPoint[] {
+  const points = history?.points ?? []
+  return points
+    .filter((point) => point.date >= from && point.date <= to)
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((point) => ({
+      date: point.date,
+      label: formatAxisDate(point.date),
+      actual: point.actualCumulative,
+      planned: point.plannedCumulative,
+    }))
+}
+
 async function getSite(siteId: string): Promise<SiteDetail> {
   const { data } = await apiClient.get<RawSite>(`/piling/sites/${siteId}`)
   return mapSite(data)
@@ -253,12 +344,34 @@ async function getChecklistDetail(checklistId: string): Promise<ChecklistDetail>
     checklistId: data.id,
     date: data.date,
     status: data.status,
+    planStartTime: data.plan_start_time,
     rows: buildStepRows(data, new Date()),
+    downtimeWindows: data.downtime_windows.map(mapDowntimeWindow),
   }
+}
+
+// Lightweight per-pile summary for every pile active anywhere in [from, to] —
+// feeds the range pile table without pulling any step-level timestamps.
+async function getPileProgressForRange(siteId: string, from: string, to: string): Promise<PileProgressRow[]> {
+  const { data } = await apiClient.get<RawPileProgress[]>(`/piling/sites/${siteId}/piles/progress`, {
+    params: { date_from: from, date_to: to },
+  })
+  return data.map(mapPileProgress)
+}
+
+// Full step-level detail for one pile, merged across every day it appeared in
+// [from, to] — fetched lazily, one pile at a time (see usePileStepsForRange).
+async function getPileStepsForRange(pileId: string, from: string, to: string): Promise<ChecklistStepRow[]> {
+  const { data } = await apiClient.get<RawChecklistPile[]>(`/piling/piles/${pileId}/steps`, {
+    params: { date_from: from, date_to: to },
+  })
+  return buildStepRowsForPileDays(data, new Date())
 }
 
 export const siteDetailService = {
   getSite,
   getPlanState,
   getChecklistDetail,
+  getPileProgressForRange,
+  getPileStepsForRange,
 }

@@ -1,10 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
+import { dashboardService } from '../api/dashboard.api'
 import { siteDetailService } from '../api/siteDetail.api'
 
 export const siteDetailQueryKeys = {
   site: (siteId: string) => ['piling-site-detail', 'site', siteId] as const,
   planState: (siteId: string, date: string) => ['piling-site-detail', 'plan-state', siteId, date] as const,
   checklist: (checklistId: string) => ['piling-site-detail', 'checklist', checklistId] as const,
+  progressHistory: (siteId: string) => ['piling-site-detail', 'progress-history', siteId] as const,
+  pileProgressRange: (siteId: string, from: string, to: string) =>
+    ['piling-site-detail', 'pile-progress-range', siteId, from, to] as const,
+  pileStepsRange: (pileId: string, from: string, to: string) =>
+    ['piling-site-detail', 'pile-steps-range', pileId, from, to] as const,
 }
 
 export function useSite(siteId: string | undefined) {
@@ -28,5 +34,35 @@ export function useChecklistDetail(checklistId: string | null | undefined) {
     queryKey: siteDetailQueryKeys.checklist(checklistId ?? ''),
     queryFn: () => siteDetailService.getChecklistDetail(checklistId as string),
     enabled: !!checklistId,
+  })
+}
+
+// Full (unfiltered) daily plan-vs-actual history for the site, sliced
+// client-side to whatever date range the user picks on the detail page.
+export function useSiteProgressHistory(siteId: string | undefined) {
+  return useQuery({
+    queryKey: siteDetailQueryKeys.progressHistory(siteId ?? ''),
+    queryFn: () => dashboardService.getSiteProgressHistory(siteId as string),
+    enabled: !!siteId,
+  })
+}
+
+// Drives the range pile table — lightweight, no step-level detail.
+export function usePileProgressForRange(siteId: string | undefined, from: string, to: string) {
+  return useQuery({
+    queryKey: siteDetailQueryKeys.pileProgressRange(siteId ?? '', from, to),
+    queryFn: () => siteDetailService.getPileProgressForRange(siteId as string, from, to),
+    enabled: !!siteId,
+  })
+}
+
+// One pile's full step detail for the range — fetched lazily (prefetched for
+// the first ~10 rows, on demand for the rest); cached by [pileId, from, to]
+// so re-opening an already-fetched pile is free.
+export function usePileStepsForRange(pileId: string | undefined, from: string, to: string, enabled: boolean) {
+  return useQuery({
+    queryKey: siteDetailQueryKeys.pileStepsRange(pileId ?? '', from, to),
+    queryFn: () => siteDetailService.getPileStepsForRange(pileId as string, from, to),
+    enabled: !!pileId && enabled,
   })
 }

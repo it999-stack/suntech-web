@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/popover"
 import { MessageSquareTextIcon } from 'lucide-react'
 import { formatDuration, formatTimeRange } from '@/lib/date'
-import type { ChecklistStepRow } from '../../../types/dashboard.types'
+import type { ChecklistStepRow, MachineDowntimeWindow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
-import { computeStepDelay, formatDelta } from '../lib/timelineMath'
+import { computeActivityDelay, computeStartDelay, formatDelta } from '../lib/timelineMath'
 
 export interface StepCell {
   gridRow: number
@@ -24,12 +24,14 @@ interface PlanActualStepColumnProps {
   cells: StepCell[]
   mode: 'planned' | 'actual'
   column: number
+  downtimeWindows?: MachineDowntimeWindow[]
+  planStartTime?: string | null
 }
 
-export function PlanActualStepColumn({ cells, mode, column }: PlanActualStepColumnProps) {
+export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = [], planStartTime = null }: PlanActualStepColumnProps) {
   return (
     <>
-      {cells.map(({ gridRow, row }) => {
+      {cells.map(({ gridRow, row }, index) => {
         const hasActual = mode === 'actual' ? !!row.actualStart : true
         const visual = stepStatusVisuals[row.status]
         const StatusIcon = visual.icon
@@ -37,10 +39,13 @@ export function PlanActualStepColumn({ cells, mode, column }: PlanActualStepColu
         const end = mode === 'planned' ? row.plannedEnd : row.actualEnd
 
         // Delay only makes sense on the actual column — planned has nothing to compare against.
-        const { startDeltaMinutes, endDeltaMinutes } =
-          mode === 'actual' ? computeStepDelay(row) : { startDeltaMinutes: null, endDeltaMinutes: null }
+        // `cells` is always one pile's rows in sequence order, so the previous cell is this
+        // step's actual predecessor.
+        const previousRow = index > 0 ? cells[index - 1].row : null
+        const startDeltaMinutes = mode === 'actual' ? computeStartDelay(row, previousRow, planStartTime) : null
+        const activityDeltaMinutes = mode === 'actual' ? computeActivityDelay(row, downtimeWindows, new Date()) : null
         const startDelay = formatDelta(startDeltaMinutes)
-        const endDelay = formatDelta(endDeltaMinutes)
+        const activityDelay = formatDelta(activityDeltaMinutes)
 
         return (
           <Card
@@ -108,13 +113,13 @@ export function PlanActualStepColumn({ cells, mode, column }: PlanActualStepColu
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   {formatDuration(row.durationMinutes)}
-                  {endDelay && (
+                  {activityDelay && (
                     <span
                       className={`text-[10px] font-semibold ${
-                        endDeltaMinutes! > 0 ? 'text-amber-600' : 'text-emerald-600'
+                        activityDeltaMinutes! > 0 ? 'text-amber-600' : 'text-emerald-600'
                       }`}
                     >
-                      end {endDelay}
+                      activity {activityDelay}
                     </span>
                   )}
                 </span>

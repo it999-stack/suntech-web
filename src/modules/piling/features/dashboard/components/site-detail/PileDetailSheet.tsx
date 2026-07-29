@@ -15,7 +15,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
 
-import type { ChecklistStepRow } from "../../types/dashboard.types"
+import type { ChecklistStepRow, MachineDowntimeWindow } from "../../types/dashboard.types"
 import { PileTimelinePanel } from "./panel/PileTimelinePanel"
 import { StepStatusLegend } from "./status/StepStatusLegend"
 import { StatusPill } from "./status/StatusPill"
@@ -29,6 +29,8 @@ interface PileDetailSheetProps {
   selectedDate: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  downtimeWindows?: MachineDowntimeWindow[]
+  planStartTime?: string | null
 }
 
 function SectionTrigger({ title }: { title: string }) {
@@ -48,6 +50,8 @@ export function PileDetailSheet({
   selectedDate,
   open,
   onOpenChange,
+  downtimeWindows,
+  planStartTime,
 }: PileDetailSheetProps) {
   const [concreteOpen, setConcreteOpen] = useState(false)
 
@@ -98,7 +102,12 @@ export function PileDetailSheet({
         {/* Scrollable Content */}
         <div className="flex-1 overflow-auto px-6 py-5">
           <div className="space-y-4">
-            <PileTimelinePanel rows={rows} selectedDate={selectedDate} />
+            <PileTimelinePanel
+              rows={rows}
+              selectedDate={selectedDate}
+              downtimeWindows={downtimeWindows}
+              planStartTime={planStartTime}
+            />
 
             <Collapsible
               open={concreteOpen}

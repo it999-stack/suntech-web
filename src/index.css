@@ -2,7 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
-@import "nprogress/nprogress.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -219,19 +218,4 @@
     background: linear-gradient(135deg, oklch(0.2046 0 0), oklch(0.2393 0 0));
     background-attachment: fixed;
   }
-}
-
-/* nprogress — route/refetch top bar, themed to match (default CSS isn't Tailwind-aware) */
-#nprogress .bar {
-  background: var(--color-primary);
-  height: 2.5px;
-  z-index: 100;
-}
-
-#nprogress .peg {
-  box-shadow: 0 0 10px var(--color-primary), 0 0 5px var(--color-primary);
-}
-
-#nprogress .spinner {
-  display: none;
 }

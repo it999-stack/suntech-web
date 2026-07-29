@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangleIcon, Columns3Icon, EyeIcon, ListChecksIcon, PencilIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ButtonGroupInput } from '@/components/ButtonGroupInput'
@@ -30,7 +31,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { formatTime } from '@/lib/date'
 import { groupBy } from '@/lib/collections'
 import { byNumber } from '@/lib/sort'
-import type { ChecklistStepRow, StepStatus } from '../../types/dashboard.types'
+import type { ChecklistStepRow, MachineDowntimeWindow, StepStatus } from '../../types/dashboard.types'
+import { siteDetailQueryKeys } from '../../hooks/useSiteDetailQueries'
 import { EditPileActualDrawer } from './EditPileActualDrawer'
 import { PileDetailSheet } from './PileDetailSheet'
 import { StatusPill } from './status/StatusPill'
@@ -39,6 +41,8 @@ interface StepStatusTableProps {
   rows: ChecklistStepRow[]
   selectedDate: string
   checklistId: string
+  downtimeWindows?: MachineDowntimeWindow[]
+  planStartTime?: string | null
 }
 
 const statusFilterItems = [
@@ -131,7 +135,8 @@ function formatActualRange(actualStart: string | null, actualEnd: string | null)
   return `${formatTime(actualStart)} – ${actualEnd ? formatTime(actualEnd) : 'In progress'}`
 }
 
-export function StepStatusTable({ rows, selectedDate, checklistId }: StepStatusTableProps) {
+export function StepStatusTable({ rows, selectedDate, checklistId, downtimeWindows, planStartTime }: StepStatusTableProps) {
+  const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [selectedPileId, setSelectedPileId] = useState<string | null>(null)
@@ -326,6 +331,8 @@ export function StepStatusTable({ rows, selectedDate, checklistId }: StepStatusT
           selectedDate={selectedDate}
           open={!!selectedPileId}
           onOpenChange={(open) => !open && setSelectedPileId(null)}
+          downtimeWindows={downtimeWindows}
+          planStartTime={planStartTime}
         />
       )}
 
@@ -333,9 +340,9 @@ export function StepStatusTable({ rows, selectedDate, checklistId }: StepStatusT
         <EditPileActualDrawer
           rows={editPile.rows}
           pileIdCode={editPile.pileIdCode}
-          checklistId={checklistId}
           open={!!editPileId}
           onOpenChange={(open) => !open && setEditPileId(null)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.checklist(checklistId) })}
         />
       )}
     </Card>

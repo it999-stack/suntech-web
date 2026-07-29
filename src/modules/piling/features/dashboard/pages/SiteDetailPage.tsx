@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { ArrowLeftIcon, CalendarIcon } from 'lucide-react'
+import type { DateRange } from 'react-day-picker'
 import { Link, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -10,23 +11,46 @@ import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { EmptyState } from '@/components/EmptyState'
 import { dateOnly, parseDateStr, today } from '@/lib/date'
+import { RangePileTable } from '../components/site-detail/RangePileTable'
 import { SitePlanVsActualChart } from '../components/site-detail/SitePlanVsActualChart'
+import { SiteProgressRangeChart } from '../components/site-detail/SiteProgressRangeChart'
 import { StepStatusTable } from '../components/site-detail/StepStatusTable'
-import { buildSitePlanVsActualTimeline } from '../api/siteDetail.api'
-import { useChecklistDetail, usePlanState, useSite } from '../hooks/useSiteDetailQueries'
+import { buildRangeChartPoints, buildSitePlanVsActualTimeline } from '../api/siteDetail.api'
+import {
+  useChecklistDetail,
+  usePileProgressForRange,
+  usePlanState,
+  useSite,
+  useSiteProgressHistory,
+} from '../hooks/useSiteDetailQueries'
 
 export default function SiteDetailPage() {
   const { siteId } = useParams<{ siteId: string }>()
-  const [date, setDate] = useState(today)
+  const [range, setRange] = useState<{ from: string; to: string }>({ from: today(), to: today() })
+  const isSingleDay = range.from === range.to
 
   const siteQuery = useSite(siteId)
-  const planStateQuery = usePlanState(siteId, date)
+  const planStateQuery = usePlanState(siteId, range.from)
   const checklistQuery = useChecklistDetail(planStateQuery.data?.exists ? planStateQuery.data.checklistId : null)
+  const progressHistoryQuery = useSiteProgressHistory(isSingleDay ? undefined : siteId)
+  const pileProgressQuery = usePileProgressForRange(
+    isSingleDay ? undefined : siteId,
+    range.from,
+    range.to
+  )
 
   const rows = checklistQuery.data?.rows ?? []
-  const chartPoints = useMemo(() => buildSitePlanVsActualTimeline(rows, date), [rows, date])
+  const chartPoints = useMemo(() => buildSitePlanVsActualTimeline(rows, range.from), [rows, range.from])
+  const rangeChartPoints = useMemo(
+    () => buildRangeChartPoints(progressHistoryQuery.data, range.from, range.to),
+    [progressHistoryQuery.data, range.from, range.to]
+  )
 
   const site = siteQuery.data
+  const selectedRange: DateRange = { from: parseDateStr(range.from), to: parseDateStr(range.to) }
+  const dateLabel = isSingleDay
+    ? format(selectedRange.from!, 'd MMM yyyy')
+    : `${format(selectedRange.from!, 'd MMM')} – ${format(selectedRange.to!, 'd MMM yyyy')}`
 
   return (
     <div className="flex flex-col gap-4">
@@ -57,19 +81,30 @@ export default function SiteDetailPage() {
         <Popover>
           <PopoverTrigger render={<Button variant="outline" size="sm" className="gap-2 font-normal" />}>
             <CalendarIcon className="size-4 text-muted-foreground" />
-            {format(parseDateStr(date), 'd MMM yyyy')}
+            {dateLabel}
           </PopoverTrigger>
           <PopoverContent align="end" className="w-auto p-2">
             <Calendar
-              mode="single"
-              selected={parseDateStr(date)}
-              onSelect={(day) => day && setDate(dateOnly(day))}
+              mode="range"
+              selected={selectedRange}
+              onSelect={(picked) =>
+                picked?.from && setRange({ from: dateOnly(picked.from), to: dateOnly(picked.to ?? picked.from) })
+              }
             />
           </PopoverContent>
         </Popover>
       </div>
 
-      {planStateQuery.isLoading || (planStateQuery.data?.exists && checklistQuery.isLoading) ? (
+      {!isSingleDay ? (
+        <>
+          <SiteProgressRangeChart points={rangeChartPoints} />
+          {pileProgressQuery.isLoading ? (
+            <TableSkeleton rows={5} columns={6} />
+          ) : (
+            <RangePileTable rows={pileProgressQuery.data ?? []} siteId={siteId!} from={range.from} to={range.to} />
+          )}
+        </>
+      ) : planStateQuery.isLoading || (planStateQuery.data?.exists && checklistQuery.isLoading) ? (
         <>
           <CardSkeleton lines={6} />
           <TableSkeleton rows={5} columns={8} />
@@ -90,7 +125,13 @@ export default function SiteDetailPage() {
       ) : (
         <>
           <SitePlanVsActualChart points={chartPoints} />
-          <StepStatusTable rows={rows} selectedDate={date} checklistId={planStateQuery.data.checklistId!} />
+          <StepStatusTable
+            rows={rows}
+            selectedDate={range.from}
+            checklistId={planStateQuery.data.checklistId!}
+            downtimeWindows={checklistQuery.data?.downtimeWindows}
+            planStartTime={checklistQuery.data?.planStartTime}
+          />
         </>
       )}
     </div>

@@ -27,9 +27,24 @@ import { formatTime } from '@/lib/date'
 interface EditPileActualDrawerProps {
   rows: ChecklistStepRow[]
   pileIdCode: string
-  checklistId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  // Called after every affected day's checklist has saved successfully, so
+  // the caller can invalidate whichever query cached these rows.
+  onSaved?: () => void
+}
+
+// Rows can come from more than one day (range mode) — each day is a separate
+// checklist_pile row server-side, so edits must be submitted per group rather
+// than against a single id.
+function groupRowsByChecklistPile(rows: ChecklistStepRow[]): Map<string, ChecklistStepRow[]> {
+  const groups = new Map<string, ChecklistStepRow[]>()
+  for (const row of rows) {
+    const group = groups.get(row.checklistPileId)
+    if (group) group.push(row)
+    else groups.set(row.checklistPileId, [row])
+  }
+  return groups
 }
 
 type FormState = Record<string, { actualStart: Date | null; actualEnd: Date | null }>
@@ -53,10 +68,11 @@ function stepDescription(entry: { actualStart: Date | null; actualEnd: Date | nu
   return `${start} – ${end}`
 }
 
-export function EditPileActualDrawer({ rows, pileIdCode, checklistId, open, onOpenChange }: EditPileActualDrawerProps) {
+export function EditPileActualDrawer({ rows, pileIdCode, open, onOpenChange, onSaved }: EditPileActualDrawerProps) {
   const [form, setForm] = useState<FormState>({})
   const [editingStepId, setEditingStepId] = useState<string | null>(null)
-  const updateActualSteps = useUpdateActualSteps(checklistId)
+  const [isSaving, setIsSaving] = useState(false)
+  const updateActualSteps = useUpdateActualSteps()
 
   useEffect(() => {
     if (open) setForm(buildInitialState(rows))
@@ -64,28 +80,35 @@ export function EditPileActualDrawer({ rows, pileIdCode, checklistId, open, onOp
   }, [open, rows])
 
   const sortedRows = [...rows].sort(byNumber((row) => row.sequenceOrder))
-  const checklistPileId = rows[0]?.checklistPileId
   const editingRow = sortedRows.find((row) => row.stepId === editingStepId) ?? null
 
   function handleStepSave(stepId: string, actualStart: Date | null, actualEnd: Date | null) {
     setForm((prev) => ({ ...prev, [stepId]: { actualStart, actualEnd } }))
   }
 
-  function handleSave() {
-    if (!checklistPileId) return
-    const entries: ActualStepUpdate[] = sortedRows.map((row) => ({
-      stepId: row.stepId,
-      actualStart: form[row.stepId]?.actualStart ?? null,
-      actualEnd: form[row.stepId]?.actualEnd ?? null,
-    }))
+  async function handleSave() {
+    const groups = groupRowsByChecklistPile(sortedRows)
+    if (groups.size === 0) return
 
-    updateActualSteps.mutate(
-      { checklistPileId, entries },
-      {
-        onSuccess: () => onOpenChange(false),
-        onError: (error) => toast.error(getErrorMessage(error, 'Failed to save actual times')),
-      }
-    )
+    setIsSaving(true)
+    try {
+      await Promise.all(
+        Array.from(groups.entries()).map(([checklistPileId, groupRows]) => {
+          const entries: ActualStepUpdate[] = groupRows.map((row) => ({
+            stepId: row.stepId,
+            actualStart: form[row.stepId]?.actualStart ?? null,
+            actualEnd: form[row.stepId]?.actualEnd ?? null,
+          }))
+          return updateActualSteps.mutateAsync({ checklistPileId, entries })
+        })
+      )
+      onSaved?.()
+      onOpenChange(false)
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to save actual times'))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -123,8 +146,8 @@ export function EditPileActualDrawer({ rows, pileIdCode, checklistId, open, onOp
           </div>
 
           <DrawerFooter>
-            <Button onClick={handleSave} disabled={updateActualSteps.isPending} className="h-[34px]">
-              {updateActualSteps.isPending ? 'Saving...' : 'Save'}
+            <Button onClick={handleSave} disabled={isSaving} className="h-[34px]">
+              {isSaving ? 'Saving...' : 'Save'}
             </Button>
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

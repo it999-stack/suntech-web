@@ -15,12 +15,9 @@ export interface MachineCell {
 interface MachineRailProps {
   cells: MachineCell[]
   column: number
-  // Which side the adjacent Planned/Actual Steps column sits on — the bar
-  // and connector hug that edge so the line stays short.
   side: 'left' | 'right'
 }
 
-// No COMPRESSOR artwork yet — falls back to the lucide icon for that track.
 const machineTypeImage: Partial<Record<PilingTrack, string>> = {
   RIG: rigImage,
   CRANE: craneImage,
@@ -95,11 +92,6 @@ export function MachineRail({ cells, column, side }: MachineRailProps) {
                   ]
             )}
           >
-            {/* Sticky within this machine's own row span — pins to the top of the
-                scroll viewport while any part of its bar is in view, and scrolls
-                away normally once the bar's range has fully passed. The connector
-                lives in here too (not as a sibling) so it stays flush against the
-                label instead of staying anchored to the bar's original midpoint. */}
             <div className="sticky top-2 z-10 relative flex flex-col items-center justify-center rounded-lg py-6">
               
               <div className="flex flex-col items-center leading-tight gap-1">

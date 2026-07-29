@@ -1,6 +1,7 @@
 import { differenceInMinutes } from 'date-fns'
-import { toLocalIsoString } from '@/lib/date'
-import type { ChecklistStepRow, MachineSummary } from '../../../types/dashboard.types'
+import { addMinutesIso, toLocalIsoString } from '@/lib/date'
+import { resolvePlannedEnd } from '../../../api/siteDetail.api'
+import type { ChecklistStepRow, MachineDowntimeWindow, MachineSummary } from '../../../types/dashboard.types'
 import type { TimelineNodeKind } from '../status/stepStatusVisuals'
 
 // The buffer occupies the last `bufferMinutes` of a step's own planned
@@ -120,26 +121,66 @@ export function groupConsecutiveMachines(
 
 // --- Plan vs actual delay ---------------------------------------------
 
-export interface StepDelay {
-  startDeltaMinutes: number | null
-  endDeltaMinutes: number | null
+// When this step could realistically have started: the previous step's
+// actual end (or, if that hasn't been recorded yet, its resolved planned
+// end), plus this step's own leading buffer (setup/travel time — see
+// stepWorkStart() in the mobile app: plannedStart marks when the buffer
+// starts, not when work does). For a pile's first step, there's no previous
+// step to chain off, so the checklist's plan start time is the anchor
+// instead.
+function expectedStepStart(row: ChecklistStepRow, previousRow: ChecklistStepRow | null, planStartTime: string | null): string | null {
+  const anchor = previousRow ? (previousRow.actualEnd ?? resolvePlannedEnd(previousRow)) : (planStartTime ?? row.plannedStart)
+  if (!anchor) return null
+  return addMinutesIso(anchor, row.bufferMinutes ?? 0)
 }
 
 /**
- * Positive = ran late vs plan. Negative = ran early. Null = no actual yet
- * (or, for endDeltaMinutes, the step hasn't finished).
+ * Positive = started later than realistically expected. Negative = started
+ * early. Null = no actual start recorded yet, or no anchor to compare
+ * against.
  */
-export function computeStepDelay(row: ChecklistStepRow): StepDelay {
-  if (!row.actualStart || !row.plannedStart) {
-    return { startDeltaMinutes: null, endDeltaMinutes: null }
-  }
-  return {
-    startDeltaMinutes: differenceInMinutes(new Date(row.actualStart), new Date(row.plannedStart)),
-    endDeltaMinutes:
-      row.actualEnd && row.plannedEnd
-        ? differenceInMinutes(new Date(row.actualEnd), new Date(row.plannedEnd))
-        : null,
-  }
+export function computeStartDelay(
+  row: ChecklistStepRow,
+  previousRow: ChecklistStepRow | null,
+  planStartTime: string | null
+): number | null {
+  if (!row.actualStart) return null
+  const expectedStart = expectedStepStart(row, previousRow, planStartTime)
+  if (!expectedStart) return null
+  return differenceInMinutes(new Date(row.actualStart), new Date(expectedStart))
+}
+
+// Sum of every window's overlap with [rangeStart, rangeEnd] — a window still
+// open (`end: null`) is treated as ongoing through rangeEnd (i.e. still down
+// "now" when rangeEnd is now).
+function sumOverlapMinutes(windows: MachineDowntimeWindow[], rangeStart: Date, rangeEnd: Date): number {
+  return windows.reduce((sum, w) => {
+    const windowStart = new Date(w.start)
+    const windowEnd = w.end ? new Date(w.end) : rangeEnd
+    const overlapStart = windowStart > rangeStart ? windowStart : rangeStart
+    const overlapEnd = windowEnd < rangeEnd ? windowEnd : rangeEnd
+    return sum + Math.max(0, differenceInMinutes(overlapEnd, overlapStart))
+  }, 0)
+}
+
+/**
+ * Positive = net working time (actual span minus any downtime on this step's
+ * track) ran longer than planned. Negative = finished faster. Null = no
+ * actual start yet, or the step has no planned duration to compare against.
+ * No actual end yet -> live estimate using `now` in its place.
+ */
+export function computeActivityDelay(row: ChecklistStepRow, downtimeWindows: MachineDowntimeWindow[], now: Date): number | null {
+  if (!row.actualStart || row.durationMinutes == null) return null
+  const start = new Date(row.actualStart)
+  const end = row.actualEnd ? new Date(row.actualEnd) : now
+  const grossMinutes = differenceInMinutes(end, start)
+  const downtimeMinutes = sumOverlapMinutes(
+    downtimeWindows.filter((w) => w.track === row.track),
+    start,
+    end
+  )
+  const netMinutes = Math.max(0, grossMinutes - downtimeMinutes)
+  return netMinutes - row.durationMinutes
 }
 
 export function formatDelta(minutes: number | null): string | null {

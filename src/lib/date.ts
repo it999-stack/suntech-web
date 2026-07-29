@@ -107,3 +107,9 @@ export function toLocalIsoString(date: Date): string {
   const s = pad(date.getSeconds())
   return `${y}-${m}-${d}T${h}:${min}:${s}`
 }
+
+export function addMinutesIso(iso: string, minutes: number): string {
+  const d = new Date(iso)
+  d.setMinutes(d.getMinutes() + minutes)
+  return toLocalIsoString(d)
+}

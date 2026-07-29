@@ -9,6 +9,7 @@ import PilingDashboardPage from '@/modules/piling/features/dashboard/pages'
 import SiteDetailPage from '@/modules/piling/features/dashboard/pages/SiteDetailPage'
 import PilesPage from '@/modules/piling/features/piles/pages'
 import SitesPage from '@/modules/piling/features/sites/pages'
+import SitePilesPage from '@/modules/piling/features/sites/pages/SitePilesPage'
 import CompaniesPage from '@/modules/shared/features/companies/pages'
 import { Layout } from './Layout'
 import { ProtectedRoute } from './ProtectedRoute'
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
               { path: 'piling/dashboard', element: <PilingDashboardPage /> },
               { path: 'piling/dashboard/sites/:siteId', element: <SiteDetailPage /> },
               { path: 'piling/sites', element: <SitesPage /> },
+              { path: 'piling/sites/:siteId', element: <SitePilesPage /> },
               { path: 'piling/clients', element: <ClientsPage /> },
               { path: 'piling/piles', element: <PilesPage /> },
               { path: 'piling/daily-checklists', element: <DailyChecklistsPage /> },

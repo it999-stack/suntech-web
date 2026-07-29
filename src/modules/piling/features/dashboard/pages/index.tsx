@@ -69,7 +69,7 @@ export default function PilingDashboardPage() {
         <SiteProgressTable sites={sites} />
       )}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2 hidden">
         {alertsQuery.isLoading ? (
           <CardSkeleton lines={4} />
         ) : (

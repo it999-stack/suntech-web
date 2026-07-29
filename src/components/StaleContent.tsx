@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { useQueryProgress } from '@/lib/nprogress'
 
 interface StaleContentProps {
   /** Pass `query.isFetching && !query.isLoading` — true during a background
@@ -15,12 +14,9 @@ interface StaleContentProps {
  * Stale-while-revalidate wrapper: keeps the previous data visible (dimmed) while
  * a background refetch runs, instead of swapping to a skeleton. Pair with
  * `placeholderData: keepPreviousData` from `@tanstack/react-query` on the query
- * so `data` doesn't briefly go undefined between filter/site changes. Also drives
- * the shared top progress bar for the duration of the refetch.
+ * so `data` doesn't briefly go undefined between filter/site changes.
  */
 export function StaleContent({ isFetching, children, className }: StaleContentProps) {
-  useQueryProgress(isFetching)
-
   return (
     <div className={cn(isFetching && 'opacity-60 transition-opacity', className)}>{children}</div>
   )

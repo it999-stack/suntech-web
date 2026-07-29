@@ -1,4 +1,5 @@
-import { MapPinIcon, PencilIcon } from 'lucide-react'
+import { EyeIcon, MapPinIcon, PencilIcon } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -56,6 +57,10 @@ export function SitesTable({ sites, onEdit }: SitesTableProps) {
                     <ProgressBar value={site.percentComplete} size="sm" />
                   </TableCell>
                   <TableCell className="text-right">
+                    <Button variant="ghost" size="icon-sm" render={<Link to={`/piling/sites/${site.id}`} />}>
+                      <EyeIcon />
+                      <span className="sr-only">View piles for {site.name}</span>
+                    </Button>
                     <Button variant="ghost" size="icon-sm" onClick={() => onEdit(site)}>
                       <PencilIcon />
                       <span className="sr-only">Edit {site.name}</span>

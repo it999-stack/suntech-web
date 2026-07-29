@@ -1,7 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/apiClient'
 import { toLocalIsoString } from '@/lib/date'
-import { siteDetailQueryKeys } from './useSiteDetailQueries'
 
 export interface ActualStepUpdate {
   stepId: string
@@ -22,15 +21,13 @@ function toPayload(entries: ActualStepUpdate[]) {
   }))
 }
 
-export function useUpdateActualSteps(checklistId: string) {
-  const queryClient = useQueryClient()
-
+// Caller decides what to invalidate on success (single-day mode invalidates
+// the whole checklist; the range table invalidates that pile's range query)
+// — a save can span more than one checklistPileId when the edited rows come
+// from a multi-day range, so the caller may fire this once per day-group.
+export function useUpdateActualSteps() {
   return useMutation({
     mutationFn: ({ checklistPileId, entries }: UpdateActualStepsVars) =>
       apiClient.patch(`/piling/checklist-piles/${checklistPileId}/actual`, toPayload(entries)),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.checklist(checklistId) })
-    },
   })
 }
