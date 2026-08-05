@@ -101,7 +101,7 @@ export function NonWorkingWindowFormDialog({
             <Label htmlFor="window-shift">Shift</Label>
             <Select
               value={shiftTypeId}
-              onValueChange={setShiftTypeId}
+              onValueChange={(value) => setShiftTypeId(value ?? '')}
               items={shifts.map((shift) => ({ value: shift.id, label: shift.name }))}
             >
               <SelectTrigger id="window-shift" className="w-full">
