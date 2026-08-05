@@ -87,6 +87,16 @@ export function formatTooltipTime(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
+/** Formats a plain "HH:MM" 24-hour time string (as stored for shift types and
+ * non-working windows) as 12-hour with AM/PM, e.g. "08:00" -> "8:00 AM". */
+export function formatTime12h(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  return new Date(2000, 0, 1, h || 0, m || 0).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function formatTimeInput(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }

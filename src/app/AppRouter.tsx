@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import LoginPage from '@/modules/auth/pages'
 import CustomersPage from '@/modules/billing/features/customers/pages'
 import InvoicesPage from '@/modules/billing/features/invoices/pages'
@@ -9,10 +9,19 @@ import PilingDashboardPage from '@/modules/piling/features/dashboard/pages'
 import SiteDetailPage from '@/modules/piling/features/dashboard/pages/SiteDetailPage'
 import PilesPage from '@/modules/piling/features/piles/pages'
 import SitesPage from '@/modules/piling/features/sites/pages'
-import SitePilesPage from '@/modules/piling/features/sites/pages/SitePilesPage'
+import SiteAppUsersPage from '@/modules/piling/features/sites/pages/site-detail/SiteAppUsersPage'
+import SiteAreasPage from '@/modules/piling/features/sites/pages/site-detail/SiteAreasPage'
+import SiteDetailLayout from '@/modules/piling/features/sites/pages/site-detail/SiteDetailLayout'
+import SiteDrawingsPage from '@/modules/piling/features/sites/pages/site-detail/SiteDrawingsPage'
+import SiteMachinesPage from '@/modules/piling/features/sites/pages/site-detail/SiteMachinesPage'
+import SitePersonnelPage from '@/modules/piling/features/sites/pages/site-detail/SitePersonnelPage'
+import SitePilesPage from '@/modules/piling/features/sites/pages/site-detail/SitePilesPage'
+import SitePilingStepsPage from '@/modules/piling/features/sites/pages/site-detail/SitePilingStepsPage'
+import SiteShiftsPage from '@/modules/piling/features/sites/pages/site-detail/SiteShiftsPage'
 import CompaniesPage from '@/modules/shared/features/companies/pages'
 import { Layout } from './Layout'
 import { ProtectedRoute } from './ProtectedRoute'
+import { RequireCapability } from './RequireCapability'
 import { RequireModule } from './RequireModule'
 import { RootRedirect } from './RootRedirect'
 
@@ -31,7 +40,25 @@ export const router = createBrowserRouter([
               { path: 'piling/dashboard', element: <PilingDashboardPage /> },
               { path: 'piling/dashboard/sites/:siteId', element: <SiteDetailPage /> },
               { path: 'piling/sites', element: <SitesPage /> },
-              { path: 'piling/sites/:siteId', element: <SitePilesPage /> },
+              {
+                path: 'piling/sites/:siteId',
+                element: <SiteDetailLayout />,
+                children: [
+                  { index: true, element: <Navigate to="piles" replace /> },
+                  { path: 'piles', element: <SitePilesPage /> },
+                  { path: 'areas', element: <SiteAreasPage /> },
+                  { path: 'piling-steps', element: <SitePilingStepsPage /> },
+                  { path: 'drawings', element: <SiteDrawingsPage /> },
+                  { path: 'personnel', element: <SitePersonnelPage /> },
+                  { path: 'machines', element: <SiteMachinesPage /> },
+                  { path: 'shifts', element: <SiteShiftsPage /> },
+                  {
+                    path: 'app-users',
+                    element: <RequireCapability capability="app_users:manage" />,
+                    children: [{ index: true, element: <SiteAppUsersPage /> }],
+                  },
+                ],
+              },
               { path: 'piling/clients', element: <ClientsPage /> },
               { path: 'piling/piles', element: <PilesPage /> },
               { path: 'piling/daily-checklists', element: <DailyChecklistsPage /> },

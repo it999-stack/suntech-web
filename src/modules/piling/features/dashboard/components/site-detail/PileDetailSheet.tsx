@@ -46,40 +46,57 @@ function SectionTrigger({ title }: { title: string }) {
   )
 }
 
-// Compact header stat — the same start/activity delay totals previously
-// shown at the bottom of the sheet in a full-width card, now a small chip
-// next to the pile title so the delay is visible without scrolling.
-function DelayChip({
+// Severity: destructive past a threshold, warning below it, success if early/on-time.
+// Adjust MAJOR_DELAY_THRESHOLD to whatever your ops team considers "severe."
+const MAJOR_DELAY_THRESHOLD = 90
+
+function getDelaySeverity(minutes: number | null) {
+  if (minutes === null) return "neutral"
+  if (minutes > MAJOR_DELAY_THRESHOLD) return "critical"
+  if (minutes > 0) return "warning"
+  if (minutes < 0) return "success"
+  return "neutral"
+}
+
+const severityStyles = {
+  critical: { text: "text-destructive", bar: "bg-destructive", track: "bg-destructive/15" },
+  warning: { text: "text-warning", bar: "bg-warning", track: "bg-warning/15" },
+  success: { text: "text-success", bar: "bg-success", track: "bg-success/15" },
+  neutral: { text: "text-muted-foreground", bar: "bg-muted-foreground", track: "bg-muted" },
+} as const
+
+function DelayGauge({
   icon: Icon,
   label,
   minutes,
+  maxScale = 180, // minutes at which the bar reads "full" — tune to your typical range
 }: {
   icon: typeof ClockIcon
   label: string
   minutes: number | null
+  maxScale?: number
 }) {
   const formatted = formatDelta(minutes)
-  const isLate = minutes !== null && minutes > 0
-  const isEarly = minutes !== null && minutes < 0
+  const severity = getDelaySeverity(minutes)
+  const styles = severityStyles[severity]
+  const fillPct = minutes === null ? 0 : Math.min(100, (Math.abs(minutes) / maxScale) * 100)
 
   return (
-    <div
-      className={cn(
-        "flex items-center gap-1.5 rounded-md px-2.5 py-1.5",
-        isLate ? "bg-warning/10" : isEarly ? "bg-success/10" : "bg-muted"
-      )}
-    >
-      <Icon className={cn("size-3.5", isLate ? "text-warning" : isEarly ? "text-success" : "text-muted-foreground")} />
-      <div className="flex flex-col leading-none">
-        <span className="text-[10px] text-muted-foreground">{label}</span>
-        <span
-          className={cn(
-            "text-xs font-semibold tabular-nums",
-            isLate ? "text-warning" : isEarly ? "text-success" : "text-foreground"
-          )}
-        >
+    <div className="flex-1 px-4 first:pl-0 last:pr-0 not-first:border-l">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <Icon className="size-3.5" />
+          {label}
+        </span>
+        <span className={cn("text-lg font-semibold tabular-nums", styles.text)}>
           {formatted ?? (minutes === null ? "—" : "0 min")}
         </span>
+      </div>
+      <div className={cn("h-1 w-full rounded-full", styles.track)}>
+        <div
+          className={cn("h-full rounded-full transition-all", styles.bar)}
+          style={{ width: `${fillPct}%` }}
+        />
       </div>
     </div>
   )
@@ -114,56 +131,49 @@ export function PileDetailSheet({
       <DrawerContent
         className="
           flex
-          max-h-[85vh]
+          max-h-[90vh]
           flex-col
           rounded-t-[10px]
           p-0
         "
       >
         {/* Sticky Header */}
-        <DrawerHeader
-          className="
-            sticky
-            top-0
-            z-20
-            border-b
-            bg-muted/30
-            px-6
-            pt-4
-            pb-4
-          "
-        >
+        <DrawerHeader className="sticky top-0 z-20 border-b bg-muted/30 px-6 pt-4 pb-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
+              <span className="rounded-md bg-foreground px-2 py-1 font-mono text-xs font-semibold tracking-wide text-background">
+                {pileIdCode}
+              </span>
               <div>
-                <DrawerTitle>{pileIdCode}</DrawerTitle>
-                <DrawerDescription>{areaLocation ?? "Unknown Area"}</DrawerDescription>
+                <DrawerTitle className="sr-only">{pileIdCode}</DrawerTitle>
+                <DrawerDescription className="text-sm">{areaLocation ?? "Unknown Area"}</DrawerDescription>
               </div>
               <StatusPill kind={status} />
             </div>
 
-            <div className="flex items-center gap-2">
-              <DelayChip icon={ClockIcon} label="Start Delay" minutes={delayTotals.totalStartDelayMinutes} />
-              <DelayChip icon={TimerIcon} label="Activity Delay" minutes={delayTotals.totalActivityDelayMinutes} />
+            <HoverCard>
+              <HoverCardTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label="Status legend"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                }
+              >
+                <Info className="size-4 cursor-pointer" />
+              </HoverCardTrigger>
+              <HoverCardContent side="bottom" align="end" className="w-auto">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status Legend</p>
+                <StepStatusLegend />
+              </HoverCardContent>
+            </HoverCard>
+          </div>
 
-              <HoverCard>
-                <HoverCardTrigger
-                  render={
-                    <button
-                      type="button"
-                      aria-label="Status legend"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                  }
-                >
-                  <Info className="size-4 cursor-pointer" />
-                </HoverCardTrigger>
-                <HoverCardContent side="bottom" align="end" className="w-auto">
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status Legend</p>
-                  <StepStatusLegend />
-                </HoverCardContent>
-              </HoverCard>
-            </div>
+          {/* Bottom row: full-width delay gauges */}
+          <div className="mt-3 flex items-stretch rounded-md border bg-background/60 px-4 py-3">
+            <DelayGauge icon={ClockIcon} label="Start Delay" minutes={delayTotals.totalStartDelayMinutes} />
+            <DelayGauge icon={TimerIcon} label="Activity Delay" minutes={delayTotals.totalActivityDelayMinutes} />
           </div>
         </DrawerHeader>
 

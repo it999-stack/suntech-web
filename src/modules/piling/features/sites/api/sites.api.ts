@@ -1,5 +1,6 @@
 import { apiClient } from '@/lib/apiClient'
 import type {
+  CreateSitePayload,
   SiteListItem,
   SitePileListItem,
   SitePileListParams,
@@ -27,6 +28,7 @@ interface RawSitePileListItem {
   id: string
   pile_id_code: string
   area_location: string | null
+  area_name: string | null
   status: SitePileListItem['status']
 }
 
@@ -35,6 +37,11 @@ interface RawSitePilePage {
   total: number
   page: number
   limit: number
+}
+
+export interface CompanyOption {
+  id: string
+  name: string
 }
 
 function mapSiteListItem(raw: RawSiteListItem): SiteListItem {
@@ -55,6 +62,7 @@ function mapSitePileListItem(raw: RawSitePileListItem): SitePileListItem {
     id: raw.id,
     pileIdCode: raw.pile_id_code,
     areaLocation: raw.area_location,
+    areaName: raw.area_name,
     status: raw.status,
   }
 }
@@ -62,6 +70,11 @@ function mapSitePileListItem(raw: RawSitePileListItem): SitePileListItem {
 async function getSites(): Promise<SiteListItem[]> {
   const { data } = await apiClient.get<RawSiteListItem[]>('/piling/sites')
   return data.map(mapSiteListItem)
+}
+
+async function getCompanies(): Promise<CompanyOption[]> {
+  const { data } = await apiClient.get<CompanyOption[]>('/shared/companies')
+  return data
 }
 
 async function getSiteById(siteId: string): Promise<{ id: string; name: string; location: string | null }> {
@@ -85,13 +98,28 @@ async function getSitePiles(siteId: string, params: SitePileListParams): Promise
   }
 }
 
+async function createSite(clientId: string, payload: CreateSitePayload): Promise<void> {
+  await apiClient.post(`/piling/clients/${clientId}/sites`, {
+    company_id: payload.companyId,
+    name: payload.name,
+    location: payload.location,
+    target_end_date: payload.targetEndDate,
+  })
+}
+
 async function updateSite(siteId: string, payload: UpdateSitePayload): Promise<void> {
-  await apiClient.patch(`/piling/sites/${siteId}`, payload)
+  await apiClient.patch(`/piling/sites/${siteId}`, {
+    client_id: payload.clientId,
+    name: payload.name,
+    location: payload.location,
+  })
 }
 
 export const sitesService = {
+  getCompanies,
   getSites,
   getSiteById,
   getSitePiles,
+  createSite,
   updateSite,
 }

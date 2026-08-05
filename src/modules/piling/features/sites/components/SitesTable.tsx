@@ -1,7 +1,7 @@
-import { EyeIcon, MapPinIcon, PencilIcon } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { MapPinIcon, PencilLine, PlusIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -17,13 +17,22 @@ import type { SiteListItem } from '../types/sites.types'
 interface SitesTableProps {
   sites: SiteListItem[]
   onEdit: (site: SiteListItem) => void
+  onCreate: () => void
 }
 
-export function SitesTable({ sites, onEdit }: SitesTableProps) {
+export function SitesTable({ sites, onEdit, onCreate }: SitesTableProps) {
+  const navigate = useNavigate()
   return (
     <Card>
       <CardHeader>
         <CardTitle>Sites</CardTitle>
+
+        <CardAction>
+          <Button onClick={onCreate}>
+            <PlusIcon className="mr-2 h-4 w-4" />
+            Create Site
+          </Button>
+        </CardAction>
       </CardHeader>
       <CardContent>
         {sites.length === 0 ? (
@@ -46,7 +55,11 @@ export function SitesTable({ sites, onEdit }: SitesTableProps) {
             </TableHeader>
             <TableBody>
               {sites.map((site) => (
-                <TableRow key={site.id}>
+                <TableRow
+                  key={site.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/piling/sites/${site.id}`)}
+                >
                   <TableCell className="text-foreground">{site.clientName}</TableCell>
                   <TableCell className="font-medium text-foreground">{site.name}</TableCell>
                   <TableCell className="text-muted-foreground">{site.location ?? '—'}</TableCell>
@@ -57,12 +70,16 @@ export function SitesTable({ sites, onEdit }: SitesTableProps) {
                     <ProgressBar value={site.percentComplete} size="sm" />
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon-sm" render={<Link to={`/piling/sites/${site.id}`} />}>
-                      <EyeIcon />
-                      <span className="sr-only">View piles for {site.name}</span>
-                    </Button>
-                    <Button variant="ghost" size="icon-sm" onClick={() => onEdit(site)}>
-                      <PencilIcon />
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEdit(site)
+                      }}
+                    >
+                      <PencilLine />
                       <span className="sr-only">Edit {site.name}</span>
                     </Button>
                   </TableCell>

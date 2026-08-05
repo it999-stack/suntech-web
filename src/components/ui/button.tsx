@@ -49,7 +49,8 @@ function Button({
   disabled,
   children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & { loading?: boolean }) {
+}: ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & { loading?: boolean }) {
   return (
     <ButtonPrimitive
       data-slot="button"
@@ -57,7 +58,7 @@ function Button({
       disabled={disabled || loading}
       {...props}
     >
-      {loading && <Loader2Icon className="size-4 animate-spin" />}
+      {loading && <Loader2Icon className="animate-spin" />}
       {children}
     </ButtonPrimitive>
   )

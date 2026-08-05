@@ -9,7 +9,15 @@ export interface SiteListItem {
   percentComplete: number
 }
 
+export interface CreateSitePayload {
+  companyId: string
+  name: string
+  location: string | null
+  targetEndDate: string | null
+}
+
 export interface UpdateSitePayload {
+  clientId?: string
   name?: string
   location?: string | null
 }
@@ -22,6 +30,7 @@ export interface SitePileListItem {
   id: string
   pileIdCode: string
   areaLocation: string | null
+  areaName: string | null
   status: PileListStatus
 }
 

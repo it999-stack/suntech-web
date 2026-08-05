@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ArrowLeftIcon, ListChecksIcon } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { ListChecksIcon, PencilLine, PlusIcon, Trash2Icon } from 'lucide-react'
+import { useParams } from 'react-router-dom'
 import { ButtonGroupInput } from '@/components/ButtonGroupInput'
 import { EmptyState } from '@/components/EmptyState'
 import { Pagination } from '@/components/Pagination'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Select,
   SelectContent,
@@ -15,8 +16,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { PileStatusBadge } from '../components/PileStatusBadge'
-import { useSite, useSitePiles } from '../hooks/useSites'
+import { DeletePileDialog } from '../../../piles/components/DeletePileDialog'
+import { PileFormDialog } from '../../../piles/components/PileFormDialog'
+import { PileStatusBadge } from '../../components/PileStatusBadge'
+import { useSitePiles } from '../../hooks/useSites'
+import type { SitePileListItem } from '../../types/sites.types'
 
 const pageSizeItems = [
   { value: '20', label: '20 / page' },
@@ -30,7 +34,10 @@ export default function SitePilesPage() {
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(20)
 
-  const siteQuery = useSite(siteId)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [pileIdToEdit, setPileIdToEdit] = useState<string | null>(null)
+  const [pileToDelete, setPileToDelete] = useState<SitePileListItem | null>(null)
+
   const pilesQuery = useSitePiles(siteId, { page, limit, search })
 
   function handleSearchChange(value: string) {
@@ -48,26 +55,16 @@ export default function SitePilesPage() {
   const totalPages = Math.max(Math.ceil(total / limit), 1)
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link
-          to="/piling/sites"
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeftIcon className="size-3.5" />
-          Back to Sites
-        </Link>
-        <h1 className="text-xl font-semibold text-foreground">{siteQuery.data?.name ?? 'Site piles'}</h1>
-      </div>
-
+    <>
       {pilesQuery.isLoading ? (
-        <TableSkeleton rows={8} columns={3} />
+        <TableSkeleton rows={8} columns={5} />
       ) : (
         <Card>
-          <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
+          <CardHeader>
             <CardTitle>Piles</CardTitle>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <CardAction>
+              <div className="flex flex-wrap items-center gap-2">
               <ButtonGroupInput
                 value={search}
                 onValueChange={handleSearchChange}
@@ -90,7 +87,13 @@ export default function SitePilesPage() {
                   </SelectGroup>
                 </SelectContent>
               </Select>
+
+              <Button onClick={() => setCreateDialogOpen(true)}>
+                <PlusIcon className="mr-2 h-4 w-4" />
+                Create Pile
+              </Button>
             </div>
+            </CardAction>
           </CardHeader>
 
           <CardContent className="flex flex-col gap-4">
@@ -111,16 +114,30 @@ export default function SitePilesPage() {
                     <TableRow>
                       <TableHead>Pile Id</TableHead>
                       <TableHead>Area</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {piles.map((pile) => (
                       <TableRow key={pile.id}>
                         <TableCell className="font-medium text-foreground">{pile.pileIdCode}</TableCell>
+                        <TableCell className="text-muted-foreground">{pile.areaName ?? '—'}</TableCell>
                         <TableCell className="text-muted-foreground">{pile.areaLocation ?? '—'}</TableCell>
                         <TableCell>
                           <PileStatusBadge status={pile.status} />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon-sm" onClick={() => setPileIdToEdit(pile.id)}>
+                            <PencilLine className="size-4" />
+                            <span className="sr-only">Edit {pile.pileIdCode}</span>
+                          </Button>
+
+                          <Button variant="ghost" size="icon-sm" onClick={() => setPileToDelete(pile)}>
+                            <Trash2Icon className="text-destructive" />
+                            <span className="sr-only">Delete {pile.pileIdCode}</span>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -139,6 +156,40 @@ export default function SitePilesPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+
+      {siteId && (
+        <PileFormDialog
+          key={String(createDialogOpen)}
+          mode="create"
+          siteId={siteId}
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+        />
+      )}
+
+      {siteId && (
+        <PileFormDialog
+          key={pileIdToEdit}
+          mode="edit"
+          siteId={siteId}
+          pileId={pileIdToEdit ?? undefined}
+          open={pileIdToEdit !== null}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setPileIdToEdit(null)
+          }}
+        />
+      )}
+
+      {siteId && (
+        <DeletePileDialog
+          siteId={siteId}
+          pile={pileToDelete}
+          open={pileToDelete !== null}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setPileToDelete(null)
+          }}
+        />
+      )}
+    </>
   )
 }
