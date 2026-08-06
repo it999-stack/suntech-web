@@ -6,6 +6,9 @@
  */
 export const ROLE_CAPABILITIES: Record<string, string[]> = {
   'app_users:manage': ['main_admin', 'piling_admin', 'process_coordinator'],
+  'sites:manage': ['main_admin', 'piling_admin'],
+  'clients:manage': ['main_admin', 'piling_admin'],
+  'users:manage': ['main_admin', 'piling_admin'],
 }
 
 export function hasCapability(role: string | null | undefined, capability: string): boolean {

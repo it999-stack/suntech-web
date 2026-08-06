@@ -12,10 +12,12 @@ import {
 import { NAV_CONFIG } from "@/config/modules.config"
 import { useAuthStore } from "@/modules/auth/store/authStore"
 import { hasModuleAccess } from "@/modules/shared/utils/access"
+import { hasCapability } from "@/modules/shared/utils/capabilities"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useAuthStore((state) => state.user)
   const userModules = user?.modules ?? []
+  const userRole = user?.role ?? null
 
   const navItems = NAV_CONFIG.filter((group) => hasModuleAccess(userModules, group.requiredModule)).map(
     (group) => ({
@@ -24,6 +26,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       isActive: true,
       items: group.items
         .filter((item) => hasModuleAccess(userModules, item.requiredModule))
+        .filter((item) => !item.requiredCapability || hasCapability(userRole, item.requiredCapability))
         .map((item) => ({ title: item.label, url: item.path })),
     })
   )

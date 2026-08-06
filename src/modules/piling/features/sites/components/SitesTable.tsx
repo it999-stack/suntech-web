@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { EmptyState } from '@/components/EmptyState'
+import { useHasCapability } from '@/modules/auth/hooks/useHasCapability'
 import { ProgressBar } from '@/modules/shared/components/ProgressBar'
 import type { SiteListItem } from '../types/sites.types'
 
@@ -22,17 +23,21 @@ interface SitesTableProps {
 
 export function SitesTable({ sites, onEdit, onCreate }: SitesTableProps) {
   const navigate = useNavigate()
+  const canManage = useHasCapability('sites:manage')
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Sites</CardTitle>
 
-        <CardAction>
-          <Button onClick={onCreate}>
-            <PlusIcon className="mr-2 h-4 w-4" />
-            Create Site
-          </Button>
-        </CardAction>
+        {canManage && (
+          <CardAction>
+            <Button onClick={onCreate}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Create Site
+            </Button>
+          </CardAction>
+        )}
       </CardHeader>
       <CardContent>
         {sites.length === 0 ? (
@@ -50,7 +55,7 @@ export function SitesTable({ sites, onEdit, onCreate }: SitesTableProps) {
                 <TableHead>Location</TableHead>
                 <TableHead>Piles</TableHead>
                 <TableHead>Progress</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                {canManage && <TableHead className="text-right">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -69,20 +74,22 @@ export function SitesTable({ sites, onEdit, onCreate }: SitesTableProps) {
                   <TableCell className="min-w-32">
                     <ProgressBar value={site.percentComplete} size="sm" />
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onEdit(site)
-                      }}
-                    >
-                      <PencilLine />
-                      <span className="sr-only">Edit {site.name}</span>
-                    </Button>
-                  </TableCell>
+                  {canManage && (
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEdit(site)
+                        }}
+                      >
+                        <PencilLine />
+                        <span className="sr-only">Edit {site.name}</span>
+                      </Button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

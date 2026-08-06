@@ -30,7 +30,8 @@ const DESIGNATION_SUGGESTIONS = [
   'Shift Incharge',
   'Engineer',
   'Supervisor',
-  'Machine Operator',
+  'Rig Operator',
+  'Crane Operator',
 ]
 
 interface PersonnelFormDialogProps {

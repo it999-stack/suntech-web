@@ -7,7 +7,6 @@ import ClientsPage from '@/modules/piling/features/clients/pages'
 import DailyChecklistsPage from '@/modules/piling/features/daily-checklists/pages'
 import PilingDashboardPage from '@/modules/piling/features/dashboard/pages'
 import SiteDetailPage from '@/modules/piling/features/dashboard/pages/SiteDetailPage'
-import PilesPage from '@/modules/piling/features/piles/pages'
 import SitesPage from '@/modules/piling/features/sites/pages'
 import SiteAppUsersPage from '@/modules/piling/features/sites/pages/site-detail/SiteAppUsersPage'
 import SiteAreasPage from '@/modules/piling/features/sites/pages/site-detail/SiteAreasPage'
@@ -19,6 +18,7 @@ import SitePilesPage from '@/modules/piling/features/sites/pages/site-detail/Sit
 import SitePilingStepsPage from '@/modules/piling/features/sites/pages/site-detail/SitePilingStepsPage'
 import SiteShiftsPage from '@/modules/piling/features/sites/pages/site-detail/SiteShiftsPage'
 import CompaniesPage from '@/modules/shared/features/companies/pages'
+import UsersPage from '@/modules/shared/features/users/pages'
 import { Layout } from './Layout'
 import { ProtectedRoute } from './ProtectedRoute'
 import { RequireCapability } from './RequireCapability'
@@ -60,7 +60,6 @@ export const router = createBrowserRouter([
                 ],
               },
               { path: 'piling/clients', element: <ClientsPage /> },
-              { path: 'piling/piles', element: <PilesPage /> },
               { path: 'piling/daily-checklists', element: <DailyChecklistsPage /> },
             ],
           },
@@ -73,6 +72,10 @@ export const router = createBrowserRouter([
             ],
           },
           { path: 'shared/companies', element: <CompaniesPage /> },
+          {
+            element: <RequireCapability capability="users:manage" />,
+            children: [{ path: 'shared/users', element: <UsersPage /> }],
+          },
         ],
       },
     ],

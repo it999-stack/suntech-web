@@ -10,6 +10,7 @@ export interface NavItem {
   label: string
   path: string
   requiredModule: string | null
+  requiredCapability?: string
 }
 
 export interface NavGroup {
@@ -30,12 +31,18 @@ export const NAV_CONFIG: NavGroup[] = [
       { key: 'dashboard', label: 'Dashboard', path: '/piling/dashboard', requiredModule: 'piling:*' },
       { key: 'sites', label: 'Sites', path: '/piling/sites', requiredModule: 'piling:*' },
       { key: 'clients', label: 'Clients', path: '/piling/clients', requiredModule: 'piling:*' },
-      { key: 'piles', label: 'Piles', path: '/piling/piles', requiredModule: 'piling:*' },
       {
         key: 'daily-checklists',
         label: 'Daily Checklists',
         path: '/piling/daily-checklists',
         requiredModule: 'piling:*',
+      },
+      {
+        key: 'users',
+        label: 'Users',
+        path: '/shared/users',
+        requiredModule: 'piling:*',
+        requiredCapability: 'users:manage',
       },
     ],
   },
