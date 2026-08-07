@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from '@/components/ui/combobox'
+  Autocomplete,
+  AutocompleteContent,
+  AutocompleteEmpty,
+  AutocompleteInput,
+  AutocompleteItem,
+  AutocompleteList,
+} from '@/components/ui/autocomplete'
 import {
   Dialog,
   DialogClose,
@@ -235,39 +235,39 @@ export function DurationTemplateFormDialog({
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="duration-template-duration">Avg Duration (min)</Label>
 
-            <Combobox items={durationSuggestions} inputValue={duration} onInputValueChange={setDuration}>
-              <ComboboxInput id="duration-template-duration" placeholder="e.g. 45" showClear />
+            <Autocomplete items={durationSuggestions} value={duration} onValueChange={setDuration}>
+              <AutocompleteInput id="duration-template-duration" placeholder="e.g. 45" showClear />
 
-              <ComboboxContent>
-                <ComboboxEmpty>No previous values match — your typed value will be used.</ComboboxEmpty>
-                <ComboboxList>
+              <AutocompleteContent>
+                <AutocompleteEmpty>No previous values match — your typed value will be used.</AutocompleteEmpty>
+                <AutocompleteList>
                   {(item: string) => (
-                    <ComboboxItem key={item} value={item}>
+                    <AutocompleteItem key={item} value={item}>
                       {item} min
-                    </ComboboxItem>
+                    </AutocompleteItem>
                   )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+                </AutocompleteList>
+              </AutocompleteContent>
+            </Autocomplete>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="duration-template-buffer">Buffer (min)</Label>
 
-            <Combobox items={bufferSuggestions} inputValue={buffer} onInputValueChange={setBuffer}>
-              <ComboboxInput id="duration-template-buffer" placeholder="e.g. 10" showClear />
+            <Autocomplete items={bufferSuggestions} value={buffer} onValueChange={setBuffer}>
+              <AutocompleteInput id="duration-template-buffer" placeholder="e.g. 10" showClear />
 
-              <ComboboxContent>
-                <ComboboxEmpty>No previous values match — your typed value will be used.</ComboboxEmpty>
-                <ComboboxList>
+              <AutocompleteContent>
+                <AutocompleteEmpty>No previous values match — your typed value will be used.</AutocompleteEmpty>
+                <AutocompleteList>
                   {(item: string) => (
-                    <ComboboxItem key={item} value={item}>
+                    <AutocompleteItem key={item} value={item}>
                       {item} min
-                    </ComboboxItem>
+                    </AutocompleteItem>
                   )}
-                </ComboboxList>
-              </ComboboxContent>
-            </Combobox>
+                </AutocompleteList>
+              </AutocompleteContent>
+            </Autocomplete>
           </div>
         </div>
 

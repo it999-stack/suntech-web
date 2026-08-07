@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from '@/components/ui/combobox'
+  Autocomplete,
+  AutocompleteContent,
+  AutocompleteEmpty,
+  AutocompleteInput,
+  AutocompleteItem,
+  AutocompleteList,
+} from '@/components/ui/autocomplete'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -221,29 +221,29 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="pile-location">Location</Label>
 
-          <Combobox
+          <Autocomplete
             items={locationSuggestions}
-            inputValue={areaLocation}
-            onInputValueChange={(value) => setAreaLocation(value)}
+            value={areaLocation}
+            onValueChange={(value) => setAreaLocation(value)}
           >
-            <ComboboxInput
+            <AutocompleteInput
               id="pile-location"
               placeholder="e.g. Grid N1"
               disabled={isLoadingForEdit}
               showClear
             />
 
-            <ComboboxContent>
-              <ComboboxEmpty>No previous locations match — your typed value will be used.</ComboboxEmpty>
-              <ComboboxList>
+            <AutocompleteContent>
+              <AutocompleteEmpty>No previous locations match — your typed value will be used.</AutocompleteEmpty>
+              <AutocompleteList>
                 {(item: string) => (
-                  <ComboboxItem key={item} value={item}>
+                  <AutocompleteItem key={item} value={item}>
                     {item}
-                  </ComboboxItem>
+                  </AutocompleteItem>
                 )}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
+              </AutocompleteList>
+            </AutocompleteContent>
+          </Autocomplete>
         </div>
 
         <div className="flex flex-col gap-1.5">

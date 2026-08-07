@@ -2,13 +2,13 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxInput,
-  ComboboxItem,
-  ComboboxList,
-} from '@/components/ui/combobox'
+  Autocomplete,
+  AutocompleteContent,
+  AutocompleteEmpty,
+  AutocompleteInput,
+  AutocompleteItem,
+  AutocompleteList,
+} from '@/components/ui/autocomplete'
 import {
   Dialog,
   DialogClose,
@@ -121,24 +121,24 @@ export function PersonnelFormDialog({
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="personnel-designation">Designation</Label>
 
-          <Combobox
+          <Autocomplete
             items={DESIGNATION_SUGGESTIONS}
-            inputValue={designation}
-            onInputValueChange={(value) => setDesignation(value)}
+            value={designation}
+            onValueChange={(value) => setDesignation(value)}
           >
-            <ComboboxInput id="personnel-designation" placeholder="e.g. Supervisor" showClear />
+            <AutocompleteInput id="personnel-designation" placeholder="e.g. Supervisor" showClear />
 
-            <ComboboxContent>
-              <ComboboxEmpty>No matching designation — your typed value will be used.</ComboboxEmpty>
-              <ComboboxList>
+            <AutocompleteContent>
+              <AutocompleteEmpty>No matching designation — your typed value will be used.</AutocompleteEmpty>
+              <AutocompleteList>
                 {(item: string) => (
-                  <ComboboxItem key={item} value={item}>
+                  <AutocompleteItem key={item} value={item}>
                     {item}
-                  </ComboboxItem>
+                  </AutocompleteItem>
                 )}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
+              </AutocompleteList>
+            </AutocompleteContent>
+          </Autocomplete>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
