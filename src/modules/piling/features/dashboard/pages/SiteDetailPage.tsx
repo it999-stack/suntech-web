@@ -14,8 +14,8 @@ import { EmptyState } from '@/components/EmptyState'
 import { apiClient } from '@/lib/apiClient'
 import { dateOnly, parseDateStr, today } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errors'
-import { DelaySummaryCard } from '../components/site-detail/DelaySummaryCard'
-import { computeDelayTotals } from '../components/site-detail/lib/timelineMath'
+// import { DelaySummaryCard } from '../components/site-detail/DelaySummaryCard'
+// import { computeDelayTotals } from '../components/site-detail/lib/timelineMath'
 import { RangePileTable } from '../components/site-detail/RangePileTable'
 import { SitePlanVsActualChart } from '../components/site-detail/SitePlanVsActualChart'
 import { SiteProgressRangeChart } from '../components/site-detail/SiteProgressRangeChart'
@@ -51,17 +51,17 @@ export default function SiteDetailPage() {
     () => buildRangeChartPoints(progressHistoryQuery.data, range.from, range.to),
     [progressHistoryQuery.data, range.from, range.to]
   )
-  const delayTotals = useMemo(
-    () =>
-      computeDelayTotals(
-        rows,
-        checklistQuery.data?.downtimeWindows ?? [],
-        checklistQuery.data?.nonWorkingWindows ?? [],
-        checklistQuery.data?.planStartTime ?? null,
-        new Date()
-      ),
-    [rows, checklistQuery.data?.downtimeWindows, checklistQuery.data?.nonWorkingWindows, checklistQuery.data?.planStartTime]
-  )
+  // const delayTotals = useMemo(
+  //   () =>
+  //     computeDelayTotals(
+  //       rows,
+  //       checklistQuery.data?.downtimeWindows ?? [],
+  //       checklistQuery.data?.nonWorkingWindows ?? [],
+  //       checklistQuery.data?.planStartTime ?? null,
+  //       new Date()
+  //     ),
+  //   [rows, checklistQuery.data?.downtimeWindows, checklistQuery.data?.nonWorkingWindows, checklistQuery.data?.planStartTime]
+  // )
 
   const site = siteQuery.data
   const selectedRange: DateRange = { from: parseDateStr(range.from), to: parseDateStr(range.to) }
