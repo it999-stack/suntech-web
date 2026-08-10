@@ -17,7 +17,7 @@ import {
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 
-import type { ChecklistStepRow, MachineDowntimeWindow } from "../../types/dashboard.types"
+import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from "../../types/dashboard.types"
 import { PileTimelinePanel } from "./panel/PileTimelinePanel"
 import { StepStatusLegend } from "./status/StepStatusLegend"
 import { StatusPill } from "./status/StatusPill"
@@ -34,6 +34,7 @@ interface PileDetailSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   downtimeWindows?: MachineDowntimeWindow[]
+  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
 }
 
@@ -46,21 +47,15 @@ function SectionTrigger({ title }: { title: string }) {
   )
 }
 
-// Severity: destructive past a threshold, warning below it, success if early/on-time.
-// Adjust MAJOR_DELAY_THRESHOLD to whatever your ops team considers "severe."
-const MAJOR_DELAY_THRESHOLD = 90
-
+// Only two states: red once actual runs past plan at all, green when on time or early.
 function getDelaySeverity(minutes: number | null) {
   if (minutes === null) return "neutral"
-  if (minutes > MAJOR_DELAY_THRESHOLD) return "critical"
-  if (minutes > 0) return "warning"
-  if (minutes < 0) return "success"
-  return "neutral"
+  if (minutes > 0) return "critical"
+  return "success"
 }
 
 const severityStyles = {
   critical: { text: "text-destructive", bar: "bg-destructive", track: "bg-destructive/15" },
-  warning: { text: "text-warning", bar: "bg-warning", track: "bg-warning/15" },
   success: { text: "text-success", bar: "bg-success", track: "bg-success/15" },
   neutral: { text: "text-muted-foreground", bar: "bg-muted-foreground", track: "bg-muted" },
 } as const
@@ -111,14 +106,15 @@ export function PileDetailSheet({
   open,
   onOpenChange,
   downtimeWindows,
+  nonWorkingWindows,
   planStartTime,
 }: PileDetailSheetProps) {
   const [concreteOpen, setConcreteOpen] = useState(false)
 
   const concreteUsage = rows[0]?.concreteUsage ?? null
   const delayTotals = useMemo(
-    () => computeDelayTotals(rows, downtimeWindows ?? [], planStartTime ?? null, new Date()),
-    [rows, downtimeWindows, planStartTime]
+    () => computeDelayTotals(rows, downtimeWindows ?? [], nonWorkingWindows ?? [], planStartTime ?? null, new Date()),
+    [rows, downtimeWindows, nonWorkingWindows, planStartTime]
   )
 
   return (
@@ -184,6 +180,7 @@ export function PileDetailSheet({
               rows={rows}
               selectedDate={selectedDate}
               downtimeWindows={downtimeWindows}
+              nonWorkingWindows={nonWorkingWindows}
               planStartTime={planStartTime}
             />
 

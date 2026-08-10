@@ -9,6 +9,7 @@ import type {
   ConcreteUsage,
   MachineDowntimeWindow,
   MachineSummary,
+  NonWorkingWindow,
   PileLifecycle,
   PileProgressRow,
   PilingTrack,
@@ -110,6 +111,12 @@ interface RawDowntimeWindow {
   notes: string | null
 }
 
+interface RawNonWorkingWindow {
+  start: string
+  end: string
+  label: string
+}
+
 interface RawChecklist {
   id: string
   date: string
@@ -117,6 +124,7 @@ interface RawChecklist {
   plan_start_time: string | null
   checklist_piles: RawChecklistPile[]
   downtime_windows: RawDowntimeWindow[]
+  non_working_windows: RawNonWorkingWindow[]
 }
 
 interface RawPileProgress {
@@ -147,6 +155,10 @@ function mapMachine(raw: RawMachineSummary): MachineSummary {
 
 function mapDowntimeWindow(raw: RawDowntimeWindow): MachineDowntimeWindow {
   return { track: raw.track, start: raw.start, end: raw.end, machineId: raw.machine_id, notes: raw.notes }
+}
+
+function mapNonWorkingWindow(raw: RawNonWorkingWindow): NonWorkingWindow {
+  return { start: raw.start, end: raw.end, label: raw.label }
 }
 
 // Actual-machine tracking doesn't exist per-step (PileActualStep has no
@@ -182,7 +194,7 @@ function mapConcreteUsage(raw: RawConcreteUsage | null): ConcreteUsage | null {
 // Shared by the single-day whole-checklist fetch and the range per-pile-steps
 // fetch (a list of one RawChecklistPile per day the pile appeared in) — both
 // are just "some set of pile-day slices", flattened into one step-per-row.
-function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date): ChecklistStepRow[] {
+function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date, options: { dedupeByStepId?: boolean } = {}): ChecklistStepRow[] {
   const rows: ChecklistStepRow[] = []
 
   for (const pile of pileDays) {
@@ -221,11 +233,18 @@ function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date): Chec
     }
   }
 
+  if (!options.dedupeByStepId) {
+    return rows.sort(byNumber((r) => r.sequenceOrder, (r) => r.pileSeqNo))
+  }
+
   // A resume day replans its boundary step even though that step already had
   // a row the day before (sequence_order >= resume_order, inclusive — see
   // plan_generation_service.py), so the same stepId can appear twice when
-  // pileDays spans multiple days. Keep the later occurrence (pileDays is
-  // date-ascending) — it's the more recent/authoritative attempt.
+  // pileDays spans multiple days of the SAME pile. Keep the later occurrence
+  // (pileDays is date-ascending) — it's the more recent/authoritative attempt.
+  // Only valid when every entry in pileDays is one pile's day-slices — a
+  // whole-checklist day has many different piles legitimately sharing the
+  // same catalog stepId, so this must not run there (see buildStepRows).
   const byStepId = new Map(rows.map((row) => [row.stepId, row]))
   return Array.from(byStepId.values()).sort(byNumber((r) => r.sequenceOrder, (r) => r.pileSeqNo))
 }
@@ -347,6 +366,7 @@ async function getChecklistDetail(checklistId: string): Promise<ChecklistDetail>
     planStartTime: data.plan_start_time,
     rows: buildStepRows(data, new Date()),
     downtimeWindows: data.downtime_windows.map(mapDowntimeWindow),
+    nonWorkingWindows: data.non_working_windows.map(mapNonWorkingWindow),
   }
 }
 
@@ -365,7 +385,7 @@ async function getPileStepsForRange(pileId: string, from: string, to: string): P
   const { data } = await apiClient.get<RawChecklistPile[]>(`/piling/piles/${pileId}/steps`, {
     params: { date_from: from, date_to: to },
   })
-  return buildStepRowsForPileDays(data, new Date())
+  return buildStepRowsForPileDays(data, new Date(), { dedupeByStepId: true })
 }
 
 export const siteDetailService = {

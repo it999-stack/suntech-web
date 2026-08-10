@@ -28,17 +28,17 @@ function DelayStat({
       <div
         className={cn(
           'flex size-9 shrink-0 items-center justify-center rounded-lg',
-          isLate ? 'bg-warning/10' : isEarly ? 'bg-success/10' : 'bg-muted'
+          isLate ? 'bg-destructive/10' : isEarly ? 'bg-success/10' : 'bg-muted'
         )}
       >
-        <Icon className={cn('size-4', isLate ? 'text-warning' : isEarly ? 'text-success' : 'text-muted-foreground')} />
+        <Icon className={cn('size-4', isLate ? 'text-destructive' : isEarly ? 'text-success' : 'text-muted-foreground')} />
       </div>
       <div className="min-w-0">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div
           className={cn(
             'text-lg font-semibold tabular-nums',
-            isLate ? 'text-warning' : isEarly ? 'text-success' : 'text-foreground'
+            isLate ? 'text-destructive' : isEarly ? 'text-success' : 'text-foreground'
           )}
         >
           {formatted ?? (minutes === null ? '—' : '0 min')}

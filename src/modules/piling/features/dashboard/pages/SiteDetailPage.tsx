@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { ArrowLeftIcon, CalendarIcon } from 'lucide-react'
+import { ArrowLeftIcon, CalendarIcon, DownloadIcon } from 'lucide-react'
 import type { DateRange } from 'react-day-picker'
 import { Link, useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,7 +11,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { EmptyState } from '@/components/EmptyState'
+import { apiClient } from '@/lib/apiClient'
 import { dateOnly, parseDateStr, today } from '@/lib/date'
+import { getErrorMessage } from '@/lib/errors'
 import { DelaySummaryCard } from '../components/site-detail/DelaySummaryCard'
 import { computeDelayTotals } from '../components/site-detail/lib/timelineMath'
 import { RangePileTable } from '../components/site-detail/RangePileTable'
@@ -29,6 +32,7 @@ import {
 export default function SiteDetailPage() {
   const { siteId } = useParams<{ siteId: string }>()
   const [range, setRange] = useState<{ from: string; to: string }>({ from: today(), to: today() })
+  const [isExporting, setIsExporting] = useState(false)
   const isSingleDay = range.from === range.to
 
   const siteQuery = useSite(siteId)
@@ -52,10 +56,11 @@ export default function SiteDetailPage() {
       computeDelayTotals(
         rows,
         checklistQuery.data?.downtimeWindows ?? [],
+        checklistQuery.data?.nonWorkingWindows ?? [],
         checklistQuery.data?.planStartTime ?? null,
         new Date()
       ),
-    [rows, checklistQuery.data?.downtimeWindows, checklistQuery.data?.planStartTime]
+    [rows, checklistQuery.data?.downtimeWindows, checklistQuery.data?.nonWorkingWindows, checklistQuery.data?.planStartTime]
   )
 
   const site = siteQuery.data
@@ -63,6 +68,29 @@ export default function SiteDetailPage() {
   const dateLabel = isSingleDay
     ? format(selectedRange.from!, 'd MMM yyyy')
     : `${format(selectedRange.from!, 'd MMM')} – ${format(selectedRange.to!, 'd MMM yyyy')}`
+
+  const checklistId = planStateQuery.data?.exists ? planStateQuery.data.checklistId : null
+
+  async function handleExportReport() {
+    if (!checklistId) return
+    setIsExporting(true)
+    try {
+      const { data } = await apiClient.get(`/piling/checklists/${checklistId}/export/delay-report`, {
+        responseType: 'blob',
+      })
+      const url = URL.createObjectURL(data)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `piling_delay_report_${range.from}.xlsx`
+      link.click()
+      URL.revokeObjectURL(url)
+      toast.success('Report downloaded successfully')
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to export report'))
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,21 +118,34 @@ export default function SiteDetailPage() {
           )}
         </div>
 
-        <Popover>
-          <PopoverTrigger render={<Button variant="outline" size="sm" className="gap-2 font-normal" />}>
-            <CalendarIcon className="size-4 text-muted-foreground" />
-            {dateLabel}
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-auto p-2">
-            <Calendar
-              mode="range"
-              selected={selectedRange}
-              onSelect={(picked) =>
-                picked?.from && setRange({ from: dateOnly(picked.from), to: dateOnly(picked.to ?? picked.from) })
-              }
-            />
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center gap-2">
+          {isSingleDay && checklistId && (
+            <Button
+              variant="outline"
+              size="sm"
+              title="Export Report"
+              loading={isExporting}
+              onClick={handleExportReport}
+            >
+              {!isExporting && <DownloadIcon className="size-4 text-muted-foreground" />}
+            </Button>
+          )}
+          <Popover>
+            <PopoverTrigger render={<Button variant="outline" size="sm" className="gap-2 font-normal" />}>
+              <CalendarIcon className="size-4 text-muted-foreground" />
+              {dateLabel}
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto p-2">
+              <Calendar
+                mode="range"
+                selected={selectedRange}
+                onSelect={(picked) =>
+                  picked?.from && setRange({ from: dateOnly(picked.from), to: dateOnly(picked.to ?? picked.from) })
+                }
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
       {!isSingleDay ? (
@@ -137,16 +178,17 @@ export default function SiteDetailPage() {
       ) : (
         <>
           <SitePlanVsActualChart points={chartPoints} />
-          <DelaySummaryCard
+          {/* <DelaySummaryCard
             title="Overall Delay — All Piles"
             totalStartDelayMinutes={delayTotals.totalStartDelayMinutes}
             totalActivityDelayMinutes={delayTotals.totalActivityDelayMinutes}
-          />
+          /> */}
           <StepStatusTable
             rows={rows}
             selectedDate={range.from}
             checklistId={planStateQuery.data.checklistId!}
             downtimeWindows={checklistQuery.data?.downtimeWindows}
+            nonWorkingWindows={checklistQuery.data?.nonWorkingWindows}
             planStartTime={checklistQuery.data?.planStartTime}
           />
         </>

@@ -31,7 +31,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { formatTime } from '@/lib/date'
 import { groupBy } from '@/lib/collections'
 import { byNumber } from '@/lib/sort'
-import type { ChecklistStepRow, MachineDowntimeWindow, StepStatus } from '../../types/dashboard.types'
+import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow, StepStatus } from '../../types/dashboard.types'
 import { siteDetailQueryKeys } from '../../hooks/useSiteDetailQueries'
 import { EditPileActualDrawer } from './EditPileActualDrawer'
 import { PileDetailSheet } from './PileDetailSheet'
@@ -42,6 +42,7 @@ interface StepStatusTableProps {
   selectedDate: string
   checklistId: string
   downtimeWindows?: MachineDowntimeWindow[]
+  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
 }
 
@@ -135,7 +136,14 @@ function formatActualRange(actualStart: string | null, actualEnd: string | null)
   return `${formatTime(actualStart)} – ${actualEnd ? formatTime(actualEnd) : 'In progress'}`
 }
 
-export function StepStatusTable({ rows, selectedDate, checklistId, downtimeWindows, planStartTime }: StepStatusTableProps) {
+export function StepStatusTable({
+  rows,
+  selectedDate,
+  checklistId,
+  downtimeWindows,
+  nonWorkingWindows,
+  planStartTime,
+}: StepStatusTableProps) {
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
@@ -332,6 +340,7 @@ export function StepStatusTable({ rows, selectedDate, checklistId, downtimeWindo
           open={!!selectedPileId}
           onOpenChange={(open) => !open && setSelectedPileId(null)}
           downtimeWindows={downtimeWindows}
+          nonWorkingWindows={nonWorkingWindows}
           planStartTime={planStartTime}
         />
       )}

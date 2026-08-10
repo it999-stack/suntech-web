@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover"
 import { MessageSquareTextIcon } from 'lucide-react'
 import { formatDuration, formatTimeRange } from '@/lib/date'
-import type { ChecklistStepRow, MachineDowntimeWindow } from '../../../types/dashboard.types'
+import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
 import { computeActivityDelay, computeStartDelay, formatDelta, stepWorkStart } from '../lib/timelineMath'
 
@@ -25,10 +25,18 @@ interface PlanActualStepColumnProps {
   mode: 'planned' | 'actual'
   column: number
   downtimeWindows?: MachineDowntimeWindow[]
+  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
 }
 
-export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = [], planStartTime = null }: PlanActualStepColumnProps) {
+export function PlanActualStepColumn({
+  cells,
+  mode,
+  column,
+  downtimeWindows = [],
+  nonWorkingWindows = [],
+  planStartTime = null,
+}: PlanActualStepColumnProps) {
   return (
     <>
       {cells.map(({ gridRow, row }, index) => {
@@ -43,7 +51,8 @@ export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = []
         // step's actual predecessor.
         const previousRow = index > 0 ? cells[index - 1].row : null
         const startDeltaMinutes = mode === 'actual' ? computeStartDelay(row, previousRow, planStartTime) : null
-        const activityDeltaMinutes = mode === 'actual' ? computeActivityDelay(row, downtimeWindows, new Date()) : null
+        const activityDeltaMinutes =
+          mode === 'actual' ? computeActivityDelay(row, downtimeWindows, nonWorkingWindows, new Date()) : null
         const startDelay = formatDelta(startDeltaMinutes)
         const activityDelay = formatDelta(activityDeltaMinutes)
 
@@ -98,7 +107,7 @@ export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = []
                   {startDelay && (
                     <span
                       className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${
-                        startDeltaMinutes! > 0 ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
+                        startDeltaMinutes! > 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
                       }`}
                     >
                       start {startDelay}
@@ -116,7 +125,7 @@ export function PlanActualStepColumn({ cells, mode, column, downtimeWindows = []
                   {activityDelay && (
                     <span
                       className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${
-                        activityDeltaMinutes! > 0 ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'
+                        activityDeltaMinutes! > 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
                       }`}
                     >
                       activity {activityDelay}

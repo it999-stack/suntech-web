@@ -2,7 +2,7 @@ import { differenceInMinutes } from 'date-fns'
 import { addMinutesIso, toLocalIsoString } from '@/lib/date'
 import { byNumber } from '@/lib/sort'
 import { resolvePlannedEnd } from '../../../api/siteDetail.api'
-import type { ChecklistStepRow, MachineDowntimeWindow, MachineSummary } from '../../../types/dashboard.types'
+import type { ChecklistStepRow, MachineDowntimeWindow, MachineSummary, NonWorkingWindow } from '../../../types/dashboard.types'
 import type { TimelineNodeKind } from '../status/stepStatusVisuals'
 
 // The buffer occupies the last `bufferMinutes` of a step's own planned
@@ -135,11 +135,15 @@ export function groupConsecutiveMachines(
 // actual end (or, if that hasn't been recorded yet, its resolved planned
 // end), plus this step's own leading buffer (setup/travel time — see
 // stepWorkStart() in the mobile app: plannedStart marks when the buffer
-// starts, not when work does). For a pile's first step, there's no previous
-// step to chain off, so the checklist's plan start time is the anchor
-// instead.
+// starts, not when work does). A machine's first step of the day has no
+// previous step to chain off, so its own plannedStart is the anchor instead
+// — it already reflects any non-working-window skip (e.g. a shift-change
+// break) the scheduler applied when laying out the plan, which the
+// checklist's raw planStartTime does not. planStartTime is only a
+// defensive fallback for the (practically impossible) case plannedStart
+// itself is missing.
 function expectedStepStart(row: ChecklistStepRow, previousRow: ChecklistStepRow | null, planStartTime: string | null): string | null {
-  const anchor = previousRow ? (previousRow.actualEnd ?? resolvePlannedEnd(previousRow)) : (planStartTime ?? row.plannedStart)
+  const anchor = previousRow ? (previousRow.actualEnd ?? resolvePlannedEnd(previousRow)) : (row.plannedStart ?? planStartTime)
   if (!anchor) return null
   return addMinutesIso(anchor, row.bufferMinutes ?? 0)
 }
@@ -162,8 +166,10 @@ export function computeStartDelay(
 
 // Sum of every window's overlap with [rangeStart, rangeEnd] — a window still
 // open (`end: null`) is treated as ongoing through rangeEnd (i.e. still down
-// "now" when rangeEnd is now).
-function sumOverlapMinutes(windows: MachineDowntimeWindow[], rangeStart: Date, rangeEnd: Date): number {
+// "now" when rangeEnd is now). Structurally typed so it accepts both
+// MachineDowntimeWindow (end may be null, still open) and NonWorkingWindow
+// (end always resolved) without needing a union import.
+function sumOverlapMinutes(windows: { start: string; end: string | null }[], rangeStart: Date, rangeEnd: Date): number {
   return windows.reduce((sum, w) => {
     const windowStart = new Date(w.start)
     const windowEnd = w.end ? new Date(w.end) : rangeEnd
@@ -175,21 +181,30 @@ function sumOverlapMinutes(windows: MachineDowntimeWindow[], rangeStart: Date, r
 
 /**
  * Positive = net working time (actual span minus any downtime on this step's
- * track) ran longer than planned. Negative = finished faster. Null = no
- * actual start yet, or the step has no planned duration to compare against.
- * No actual end yet -> live estimate using `now` in its place.
+ * track, and minus any non-working/shift-change window the span crossed)
+ * ran longer than planned. Negative = finished faster. Null = no actual
+ * start yet, or the step has no planned duration to compare against. No
+ * actual end yet -> live estimate using `now` in its place.
+ *
+ * Non-working windows (e.g. a fixed lunch/shift-change break) aren't
+ * track-scoped the way machine downtime is — a scheduled break stops
+ * everyone, not just one machine — so they're netted out unconditionally,
+ * with no `row.track` filter.
  */
-export function computeActivityDelay(row: ChecklistStepRow, downtimeWindows: MachineDowntimeWindow[], now: Date): number | null {
+export function computeActivityDelay(
+  row: ChecklistStepRow,
+  downtimeWindows: MachineDowntimeWindow[],
+  nonWorkingWindows: NonWorkingWindow[],
+  now: Date
+): number | null {
   if (!row.actualStart || row.durationMinutes == null) return null
   const start = new Date(row.actualStart)
   const end = row.actualEnd ? new Date(row.actualEnd) : now
   const grossMinutes = differenceInMinutes(end, start)
-  const downtimeMinutes = sumOverlapMinutes(
-    downtimeWindows.filter((w) => w.track === row.track),
-    start,
-    end
-  )
-  const netMinutes = Math.max(0, grossMinutes - downtimeMinutes)
+  const nettedMinutes =
+    sumOverlapMinutes(downtimeWindows.filter((w) => w.track === row.track), start, end) +
+    sumOverlapMinutes(nonWorkingWindows, start, end)
+  const netMinutes = Math.max(0, grossMinutes - nettedMinutes)
   return netMinutes - row.durationMinutes
 }
 
@@ -204,23 +219,39 @@ export interface DelayTotals {
   totalActivityDelayMinutes: number | null
 }
 
-// Sums start/activity delay across every row that has one — grouped by
-// checklistPileId internally so each pile's own previous-step chain is used
-// regardless of whether `rows` is a single pile (sheet footer) or every pile
-// on the site for the day (site-wide summary card). A pile with no rows that
-// have an actualStart yet contributes nothing (not a 0), so a totally
-// unstarted day comes back `null`, not a misleading "0 min delay".
+// Which machine a row's step actually ran on: its own assigned machine, or
+// (for the rare unassigned case) the pile's rig/crane by track — mirrors the
+// fallback report_service.py uses when building delay-report rows.
+function rowMachineId(row: ChecklistStepRow): string | null {
+  if (row.plannedMachine) return row.plannedMachine.id
+  if (row.track === 'RIG') return row.pileRig.id
+  if (row.track === 'CRANE') return row.pileCrane.id
+  return null
+}
+
+// Sums start/activity delay across every row that has one — start delay is
+// grouped by machine (not pile) internally, since a machine's start-delay
+// chain runs across every pile it works on in sequence, not resetting at
+// each pile boundary (see DELAY_CALCULATIONS.md). Works the same whether
+// `rows` is a single pile (sheet footer) or every pile on the site for the
+// day (site-wide summary card) — a machine's chain just happens to be one
+// pile long in the single-pile case. A pile with no rows that have an
+// actualStart yet contributes nothing (not a 0), so a totally unstarted day
+// comes back `null`, not a misleading "0 min delay".
 export function computeDelayTotals(
   rows: ChecklistStepRow[],
   downtimeWindows: MachineDowntimeWindow[],
+  nonWorkingWindows: NonWorkingWindow[],
   planStartTime: string | null,
   now: Date
 ): DelayTotals {
-  const byPile = new Map<string, ChecklistStepRow[]>()
+  const byMachine = new Map<string, ChecklistStepRow[]>()
   for (const row of rows) {
-    const list = byPile.get(row.checklistPileId)
+    const machineId = rowMachineId(row)
+    if (machineId === null) continue
+    const list = byMachine.get(machineId)
     if (list) list.push(row)
-    else byPile.set(row.checklistPileId, [row])
+    else byMachine.set(machineId, [row])
   }
 
   let totalStart = 0
@@ -228,8 +259,10 @@ export function computeDelayTotals(
   let totalActivity = 0
   let activityCount = 0
 
-  for (const pileRows of byPile.values()) {
-    const sorted = [...pileRows].sort(byNumber((row) => row.sequenceOrder))
+  for (const machineRows of byMachine.values()) {
+    const sorted = [...machineRows].sort(
+      byNumber((row) => (row.plannedStart ? new Date(row.plannedStart).getTime() : 0), (row) => row.sequenceOrder)
+    )
     sorted.forEach((row, index) => {
       const previousRow = index > 0 ? sorted[index - 1] : null
       const startDelta = computeStartDelay(row, previousRow, planStartTime)
@@ -237,12 +270,15 @@ export function computeDelayTotals(
         totalStart += startDelta
         startCount++
       }
-      const activityDelta = computeActivityDelay(row, downtimeWindows, now)
-      if (activityDelta !== null) {
-        totalActivity += activityDelta
-        activityCount++
-      }
     })
+  }
+
+  for (const row of rows) {
+    const activityDelta = computeActivityDelay(row, downtimeWindows, nonWorkingWindows, now)
+    if (activityDelta !== null) {
+      totalActivity += activityDelta
+      activityCount++
+    }
   }
 
   return {

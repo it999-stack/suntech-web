@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { CalendarClockIcon, ClipboardCheckIcon } from 'lucide-react'
 import { dateOnly, formatTime } from '@/lib/date'
 import { byNumber } from '@/lib/sort'
-import type { ChecklistStepRow, MachineDowntimeWindow } from '../../../types/dashboard.types'
+import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from '../../../types/dashboard.types'
 import { MachineRail } from './MachineRail'
 import { PileTimelineFooterStats } from './PileTimelineFooterStats'
 import { PlanActualStepColumn } from './PlanActualStepColumn'
@@ -13,6 +13,7 @@ interface PileTimelinePanelProps {
   rows: ChecklistStepRow[]
   selectedDate: string // 'YYYY-MM-DD'
   downtimeWindows?: MachineDowntimeWindow[]
+  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
 }
 
@@ -51,7 +52,13 @@ function SectionHeader({
   )
 }
 
-export function PileTimelinePanel({ rows, selectedDate, downtimeWindows = [], planStartTime = null }: PileTimelinePanelProps) {
+export function PileTimelinePanel({
+  rows,
+  selectedDate,
+  downtimeWindows = [],
+  nonWorkingWindows = [],
+  planStartTime = null,
+}: PileTimelinePanelProps) {
   const sortedRows = useMemo(() => [...rows].sort(byNumber((row) => row.sequenceOrder)), [rows])
 
   const { nodes, stepContentRow, totalContentRows } = useMemo(() => buildTimelineLayout(sortedRows), [sortedRows])
@@ -128,6 +135,7 @@ export function PileTimelinePanel({ rows, selectedDate, downtimeWindows = [], pl
             mode="actual"
             column={COLUMNS.actualSteps}
             downtimeWindows={downtimeWindows}
+            nonWorkingWindows={nonWorkingWindows}
             planStartTime={planStartTime}
           />
           <MachineRail cells={actualMachineCells} column={COLUMNS.actualMachines} side="left" />

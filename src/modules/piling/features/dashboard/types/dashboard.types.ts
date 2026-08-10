@@ -119,6 +119,16 @@ export interface MachineDowntimeWindow {
   notes: string | null
 }
 
+// A FIXED-behavior non-working window (shift-change/lunch break) resolved
+// onto the checklist's own plan window — see
+// non_working_window_service.resolve_non_working_windows() in suntech-core.
+// Applies globally, unlike MachineDowntimeWindow (no track scoping).
+export interface NonWorkingWindow {
+  start: string
+  end: string
+  label: string
+}
+
 export interface ChecklistDetail {
   checklistId: string
   date: string
@@ -126,6 +136,7 @@ export interface ChecklistDetail {
   planStartTime: string | null
   rows: ChecklistStepRow[]
   downtimeWindows: MachineDowntimeWindow[]
+  nonWorkingWindows: NonWorkingWindow[]
 }
 
 // Lightweight per-pile row for the Site Detail page's range pile table — sums
