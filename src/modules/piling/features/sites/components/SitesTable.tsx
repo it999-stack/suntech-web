@@ -50,8 +50,8 @@ export function SitesTable({ sites, onEdit, onCreate }: SitesTableProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Client</TableHead>
                 <TableHead>Site</TableHead>
+                <TableHead>Client</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Piles</TableHead>
                 <TableHead>Progress</TableHead>
@@ -65,8 +65,8 @@ export function SitesTable({ sites, onEdit, onCreate }: SitesTableProps) {
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => navigate(`/piling/sites/${site.id}`)}
                 >
-                  <TableCell className="text-foreground">{site.clientName}</TableCell>
                   <TableCell className="font-medium text-foreground">{site.name}</TableCell>
+                  <TableCell className="text-foreground">{site.clientName}</TableCell>
                   <TableCell className="text-muted-foreground">{site.location ?? '—'}</TableCell>
                   <TableCell className="tabular-nums">
                     {site.completedPiles} / {site.totalPiles}

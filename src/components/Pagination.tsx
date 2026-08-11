@@ -1,4 +1,5 @@
 import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 
 interface PaginationProps {
@@ -7,10 +8,19 @@ interface PaginationProps {
   totalItems: number
   pageSize: number
   onPageChange: (page: number) => void
+  pageSizeSelector?: ReactNode
   className?: string
 }
 
-export function Pagination({ page, totalPages, totalItems, pageSize, onPageChange, className }: PaginationProps) {
+export function Pagination({
+  page,
+  totalPages,
+  totalItems,
+  pageSize,
+  onPageChange,
+  pageSizeSelector,
+  className,
+}: PaginationProps) {
   const from = totalItems === 0 ? 0 : (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, totalItems)
 
@@ -20,30 +30,34 @@ export function Pagination({ page, totalPages, totalItems, pageSize, onPageChang
         Showing {from}–{to} of {totalItems}
       </p>
 
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label="Previous page"
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-        >
-          <ChevronLeftIcon className="size-4" />
-        </Button>
+      <div className="flex items-center gap-3">
+        {pageSizeSelector}
 
-        <span className="text-sm text-muted-foreground">
-          Page {page} of {Math.max(totalPages, 1)}
-        </span>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Previous page"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+          >
+            <ChevronLeftIcon className="size-4" />
+          </Button>
 
-        <Button
-          variant="outline"
-          size="icon-sm"
-          aria-label="Next page"
-          disabled={page >= totalPages}
-          onClick={() => onPageChange(page + 1)}
-        >
-          <ChevronRightIcon className="size-4" />
-        </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {Math.max(totalPages, 1)}
+          </span>
+
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Next page"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+          >
+            <ChevronRightIcon className="size-4" />
+          </Button>
+        </div>
       </div>
     </div>
   )

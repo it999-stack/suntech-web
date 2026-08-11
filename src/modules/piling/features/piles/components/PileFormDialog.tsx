@@ -29,9 +29,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { getErrorMessage } from '@/lib/errors'
-import { useSiteAreas } from '@/modules/piling/features/areas/hooks/useAreas'
+import { useSiteLocations } from '@/modules/piling/features/locations/hooks/useLocations'
 import { useSiteDimensions } from '@/modules/piling/features/dimensions/hooks/useDimensions'
-import { useAreaLocationSuggestions, useCreatePile, usePile, useUpdatePile } from '../hooks/usePiles'
+import { useAreaSuggestions, useCreatePile, usePile, useUpdatePile } from '../hooks/usePiles'
 
 interface PileFormDialogProps {
   mode: 'create' | 'edit'
@@ -44,13 +44,13 @@ interface PileFormDialogProps {
 export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: PileFormDialogProps) {
   const [pileIdCode, setPileIdCode] = useState('')
   const [dimensionId, setDimensionId] = useState('')
-  const [areaId, setAreaId] = useState('')
-  const [areaLocation, setAreaLocation] = useState('')
+  const [locationId, setLocationId] = useState('')
+  const [area, setArea] = useState('')
   const [notes, setNotes] = useState('')
 
   const dimensionsQuery = useSiteDimensions(siteId)
-  const areasQuery = useSiteAreas(siteId)
-  const locationSuggestionsQuery = useAreaLocationSuggestions(siteId)
+  const locationsQuery = useSiteLocations(siteId)
+  const areaSuggestionsQuery = useAreaSuggestions(siteId)
   const pileQuery = usePile(mode === 'edit' ? pileId : undefined)
   const createPile = useCreatePile()
   const updatePile = useUpdatePile()
@@ -62,8 +62,8 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
       hasPrefilledRef.current = true
       setPileIdCode(pileQuery.data.pileIdCode)
       setDimensionId(pileQuery.data.dimensionId)
-      setAreaId(pileQuery.data.areaId ?? '')
-      setAreaLocation(pileQuery.data.areaLocation ?? '')
+      setLocationId(pileQuery.data.locationId ?? '')
+      setArea(pileQuery.data.area ?? '')
       setNotes(pileQuery.data.notes ?? '')
     }
   }, [mode, pileQuery.data])
@@ -76,15 +76,15 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
       })),
     [dimensionsQuery.data]
   )
-  const areaSelectItems = useMemo(
+  const locationSelectItems = useMemo(
     () =>
-      (areasQuery.data ?? []).map((area) => ({
-        value: area.id,
-        label: area.code ? `${area.name} (${area.code})` : area.name,
+      (locationsQuery.data ?? []).map((location) => ({
+        value: location.id,
+        label: location.code ? `${location.name} (${location.code})` : location.name,
       })),
-    [areasQuery.data]
+    [locationsQuery.data]
   )
-  const locationSuggestions = locationSuggestionsQuery.data ?? []
+  const areaSuggestions = areaSuggestionsQuery.data ?? []
 
   const isLoadingForEdit = mode === 'edit' && pileQuery.isLoading
 
@@ -99,8 +99,8 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
           payload: {
             pileIdCode: pileIdCode.trim(),
             dimensionId,
-            areaId: areaId || null,
-            areaLocation: areaLocation.trim() || null,
+            locationId,
+            area: area.trim() || null,
             notes: notes.trim() || null,
           },
         })
@@ -112,8 +112,8 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
           payload: {
             pileIdCode: pileIdCode.trim(),
             dimensionId,
-            areaId: areaId || null,
-            areaLocation: areaLocation.trim() || null,
+            locationId,
+            area: area.trim() || null,
             notes: notes.trim() || null,
           },
         })
@@ -184,30 +184,34 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="pile-area">Area</Label>
+            <Label htmlFor="pile-location">Location</Label>
 
-            <Select items={areaSelectItems} value={areaId} onValueChange={(value) => setAreaId(value ?? '')}>
+            <Select
+              items={locationSelectItems}
+              value={locationId}
+              onValueChange={(value) => setLocationId(value ?? '')}
+            >
               <SelectTrigger
-                id="pile-area"
+                id="pile-location"
                 className="w-full"
-                disabled={isLoadingForEdit || (!areasQuery.isLoading && areaSelectItems.length === 0)}
+                disabled={isLoadingForEdit || (!locationsQuery.isLoading && locationSelectItems.length === 0)}
               >
                 <SelectValue
                   placeholder={
-                    areasQuery.isLoading
-                      ? 'Loading areas...'
-                      : areaSelectItems.length === 0
-                        ? 'No areas configured'
-                        : 'No area selected'
+                    locationsQuery.isLoading
+                      ? 'Loading locations...'
+                      : locationSelectItems.length === 0
+                        ? 'No locations configured for this site'
+                        : 'Select a location'
                   }
                 />
               </SelectTrigger>
 
               <SelectContent>
                 <SelectGroup>
-                  <SelectLabel>Areas</SelectLabel>
+                  <SelectLabel>Locations</SelectLabel>
 
-                  {areaSelectItems.map((item) => (
+                  {locationSelectItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
                       {item.label}
                     </SelectItem>
@@ -219,22 +223,13 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="pile-location">Location</Label>
+          <Label htmlFor="pile-area">Area</Label>
 
-          <Autocomplete
-            items={locationSuggestions}
-            value={areaLocation}
-            onValueChange={(value) => setAreaLocation(value)}
-          >
-            <AutocompleteInput
-              id="pile-location"
-              placeholder="e.g. Grid N1"
-              disabled={isLoadingForEdit}
-              showClear
-            />
+          <Autocomplete items={areaSuggestions} value={area} onValueChange={(value) => setArea(value)}>
+            <AutocompleteInput id="pile-area" placeholder="e.g. Grid N1" disabled={isLoadingForEdit} showClear />
 
             <AutocompleteContent>
-              <AutocompleteEmpty>No previous locations match — your typed value will be used.</AutocompleteEmpty>
+              <AutocompleteEmpty>No previous areas match — your typed value will be used.</AutocompleteEmpty>
               <AutocompleteList>
                 {(item: string) => (
                   <AutocompleteItem key={item} value={item}>
@@ -262,7 +257,14 @@ export function PileFormDialog({ mode, siteId, pileId, open, onOpenChange }: Pil
           <Button
             onClick={handleSubmit}
             loading={createPile.isPending || updatePile.isPending}
-            disabled={isLoadingForEdit || !pileIdCode.trim() || !dimensionId || dimensionsQuery.isLoading}
+            disabled={
+              isLoadingForEdit ||
+              !pileIdCode.trim() ||
+              !dimensionId ||
+              !locationId ||
+              dimensionsQuery.isLoading ||
+              locationsQuery.isLoading
+            }
           >
             {mode === 'create' ? 'Create' : 'Save'}
           </Button>

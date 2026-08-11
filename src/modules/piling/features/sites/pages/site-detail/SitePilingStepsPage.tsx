@@ -1,20 +1,23 @@
 import { useState } from 'react'
 import { ListOrderedIcon, PencilLine, PenLine, PlusIcon, RulerIcon, Trash2Icon } from 'lucide-react'
 import { useParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { EmptyState } from '@/components/EmptyState'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { getErrorMessage } from '@/lib/errors'
 import { DeleteDimensionDialog } from '../../../dimensions/components/DeleteDimensionDialog'
 import { DimensionFormDialog } from '../../../dimensions/components/DimensionFormDialog'
 import { useSiteDimensions } from '../../../dimensions/hooks/useDimensions'
 import type { SiteDimension } from '../../../dimensions/types/dimensions.types'
 import { DurationTemplateFormDialog } from '../../../steps/components/DurationTemplateFormDialog'
-import { useSiteSteps } from '../../../steps/hooks/useSteps'
-import type { StepDimensionTemplate } from '../../../steps/types/steps.types'
+import { useSiteSteps, useUpdateStep } from '../../../steps/hooks/useSteps'
+import type { SiteStep, StepDimensionTemplate } from '../../../steps/types/steps.types'
 
 const trackVariant = {
   RIG: 'default',
@@ -40,6 +43,17 @@ export default function SitePilingStepsPage() {
 
   const dimensionsQuery = useSiteDimensions(siteId)
   const dimensions = dimensionsQuery.data ?? []
+
+  const updateStep = useUpdateStep()
+
+  async function handleToggleSplittable(step: SiteStep, isSplittable: boolean) {
+    if (!siteId) return
+    try {
+      await updateStep.mutateAsync({ siteId, stepId: step.id, isSplittable })
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to update step'))
+    }
+  }
 
   return (
     <>
@@ -80,7 +94,19 @@ export default function SitePilingStepsPage() {
                       <CardTitle className="text-sm">{step.stepName}</CardTitle>
                     </div>
 
-                    <CardAction>
+                    <CardAction className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Switch
+                          id={`step-splittable-${step.id}`}
+                          checked={step.isSplittable}
+                          disabled={updateStep.isPending}
+                          onCheckedChange={(checked) => handleToggleSplittable(step, checked)}
+                        />
+                        <label htmlFor={`step-splittable-${step.id}`} className="text-xs text-muted-foreground">
+                          Splittable
+                        </label>
+                      </div>
+
                       <Badge variant={trackVariant[step.track]}>{step.track}</Badge>
                     </CardAction>
                   </CardHeader>

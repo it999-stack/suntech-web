@@ -1,32 +1,20 @@
 import { useState } from 'react'
-import { ListChecksIcon, PencilLine, PlusIcon, Trash2Icon } from 'lucide-react'
+import { ListChecksIcon, PencilLine, PlusIcon, Trash2Icon, UploadIcon } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { ButtonGroupInput } from '@/components/ButtonGroupInput'
 import { EmptyState } from '@/components/EmptyState'
+import { PageSizeSelect } from '@/components/PageSizeSelect'
 import { Pagination } from '@/components/Pagination'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DeletePileDialog } from '../../../piles/components/DeletePileDialog'
 import { PileFormDialog } from '../../../piles/components/PileFormDialog'
+import { PileImportDialog } from '../../../piles/components/PileImportDialog'
 import { PileStatusBadge } from '../../components/PileStatusBadge'
 import { useSitePiles } from '../../hooks/useSites'
 import type { SitePileListItem } from '../../types/sites.types'
-
-const pageSizeItems = [
-  { value: '20', label: '20 / page' },
-  { value: '30', label: '30 / page' },
-  { value: '50', label: '50 / page' },
-]
 
 export default function SitePilesPage() {
   const { siteId } = useParams<{ siteId: string }>()
@@ -35,6 +23,7 @@ export default function SitePilesPage() {
   const [limit, setLimit] = useState(20)
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [pileIdToEdit, setPileIdToEdit] = useState<string | null>(null)
   const [pileToDelete, setPileToDelete] = useState<SitePileListItem | null>(null)
 
@@ -65,34 +54,23 @@ export default function SitePilesPage() {
 
             <CardAction>
               <div className="flex flex-wrap items-center gap-2">
-              <ButtonGroupInput
-                value={search}
-                onValueChange={handleSearchChange}
-                placeholder="Search pile..."
-                className="w-64"
-              />
+                <ButtonGroupInput
+                  value={search}
+                  onValueChange={handleSearchChange}
+                  placeholder="Search pile..."
+                  className="w-64"
+                />
 
-              <Select value={String(limit)} onValueChange={handleLimitChange} items={pageSizeItems}>
-                <SelectTrigger size="sm" className="w-32">
-                  <SelectValue placeholder="20 / page" />
-                </SelectTrigger>
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <UploadIcon className="mr-2 h-4 w-4" />
+                  Import
+                </Button>
 
-                <SelectContent>
-                  <SelectGroup>
-                    {pageSizeItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Create Pile
-              </Button>
-            </div>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Create Pile
+                </Button>
+              </div>
             </CardAction>
           </CardHeader>
 
@@ -123,8 +101,8 @@ export default function SitePilesPage() {
                     {piles.map((pile) => (
                       <TableRow key={pile.id}>
                         <TableCell className="font-medium text-foreground">{pile.pileIdCode}</TableCell>
-                        <TableCell className="text-muted-foreground">{pile.areaName ?? '—'}</TableCell>
-                        <TableCell className="text-muted-foreground">{pile.areaLocation ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">{pile.area ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">{pile.locationName ?? '—'}</TableCell>
                         <TableCell>
                           <PileStatusBadge status={pile.status} />
                         </TableCell>
@@ -150,6 +128,7 @@ export default function SitePilesPage() {
                   totalItems={total}
                   pageSize={limit}
                   onPageChange={setPage}
+                  pageSizeSelector={<PageSizeSelect value={limit} onValueChange={(next) => handleLimitChange(String(next))} />}
                 />
               </>
             )}
@@ -165,6 +144,10 @@ export default function SitePilesPage() {
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
         />
+      )}
+
+      {siteId && (
+        <PileImportDialog siteId={siteId} open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       )}
 
       {siteId && (

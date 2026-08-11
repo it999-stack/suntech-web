@@ -58,7 +58,7 @@ interface PileGroup {
   checklistPileId: string
   pileSeqNo: number
   pileIdCode: string
-  areaLocation: string | null
+  area: string | null
   rig: string
   crane: string
   status: StepStatus
@@ -105,7 +105,7 @@ function groupByPile(rows: ChecklistStepRow[]): PileGroup[] {
         checklistPileId: first.checklistPileId,
         pileSeqNo: first.pileSeqNo,
         pileIdCode: first.pileIdCode,
-        areaLocation: first.areaLocation,
+        area: first.area,
         rig: first.pileRig.machineNo,
         crane: first.pileCrane.machineNo,
         status: derivePileStatus(pileRows),
@@ -276,7 +276,7 @@ export function StepStatusTable({
                       </HoverCardContent>
                     </HoverCard>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{group.areaLocation ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{group.area ?? '—'}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1.5">
                       <StatusPill kind={group.status} />
@@ -334,7 +334,7 @@ export function StepStatusTable({
         <PileDetailSheet
           rows={selectedPile.rows}
           pileIdCode={selectedPile.pileIdCode}
-          areaLocation={selectedPile.areaLocation}
+          area={selectedPile.area}
           status={selectedPile.status}
           selectedDate={selectedDate}
           open={!!selectedPileId}

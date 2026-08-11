@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils"
 interface PileDetailSheetProps {
   rows: ChecklistStepRow[]
   pileIdCode: string
-  areaLocation: string | null
+  area: string | null
   status: ChecklistStepRow["status"]
   selectedDate: string
   open: boolean
@@ -100,7 +100,7 @@ function DelayGauge({
 export function PileDetailSheet({
   rows,
   pileIdCode,
-  areaLocation,
+  area,
   status,
   selectedDate,
   open,
@@ -142,7 +142,7 @@ export function PileDetailSheet({
               </span>
               <div>
                 <DrawerTitle className="sr-only">{pileIdCode}</DrawerTitle>
-                <DrawerDescription className="text-sm">{areaLocation ?? "Unknown Area"}</DrawerDescription>
+                <DrawerDescription className="text-sm">{area ?? "Unknown Area"}</DrawerDescription>
               </div>
               <StatusPill kind={status} />
             </div>

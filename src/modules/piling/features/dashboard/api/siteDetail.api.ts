@@ -79,7 +79,7 @@ interface RawDimension {
 
 interface RawPileSummary {
   pile_id_code: string
-  area_location: string | null
+  area: string | null
   dimension: RawDimension | null
 }
 
@@ -130,7 +130,7 @@ interface RawChecklist {
 interface RawPileProgress {
   id: string
   pile_id_code: string
-  area_location: string | null
+  area: string | null
   status: PileLifecycle
   completed_steps: number
   total_steps: number
@@ -207,7 +207,7 @@ function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date, optio
         pileSeqNo: pile.seq_no,
         pileIdCode: pile.pile.pile_id_code,
         pileStatus: pile.status,
-        areaLocation: pile.pile.area_location,
+        area: pile.pile.area,
         pileRig: mapMachine(pile.rig),
         pileCrane: mapMachine(pile.crane),
         dimensionDiaMm: pile.pile.dimension?.dia ?? null,
@@ -257,7 +257,7 @@ function mapPileProgress(raw: RawPileProgress): PileProgressRow {
   return {
     id: raw.id,
     pileIdCode: raw.pile_id_code,
-    areaLocation: raw.area_location,
+    area: raw.area,
     status: raw.status,
     completedSteps: raw.completed_steps,
     totalSteps: raw.total_steps,

@@ -84,7 +84,7 @@ export interface ChecklistStepRow {
   pileSeqNo: number
   pileIdCode: string
   pileStatus: PileLifecycle
-  areaLocation: string | null
+  area: string | null
   pileRig: MachineSummary
   pileCrane: MachineSummary
   dimensionDiaMm: number | null
@@ -146,7 +146,7 @@ export interface ChecklistDetail {
 export interface PileProgressRow {
   id: string
   pileIdCode: string
-  areaLocation: string | null
+  area: string | null
   status: PileLifecycle
   completedSteps: number
   totalSteps: number

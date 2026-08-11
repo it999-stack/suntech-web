@@ -45,3 +45,16 @@ export function useUpdateDurationTemplate() {
     },
   })
 }
+
+export function useUpdateStep() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ stepId, isSplittable }: { siteId: string; stepId: string; isSplittable: boolean }) =>
+      stepsService.updateStep(stepId, isSplittable),
+
+    onSuccess: (_data, { siteId }) => {
+      queryClient.invalidateQueries({ queryKey: stepsQueryKeys.bySite(siteId) })
+    },
+  })
+}

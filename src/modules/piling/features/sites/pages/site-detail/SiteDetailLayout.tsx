@@ -6,7 +6,7 @@ import { useSite } from '../../hooks/useSites'
 
 const baseSections = [
   { value: 'piles', label: 'Piles', path: 'piles' },
-  { value: 'areas', label: 'Areas', path: 'areas' },
+  { value: 'locations', label: 'Locations', path: 'locations' },
   { value: 'piling-steps', label: 'Piling Steps', path: 'piling-steps' },
   { value: 'drawings', label: 'Drawings', path: 'drawings' },
   { value: 'personnel', label: 'Site Personnel', path: 'personnel' },

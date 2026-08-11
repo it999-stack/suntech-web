@@ -1,15 +1,15 @@
-export interface SiteArea {
+export interface SiteLocation {
   id: string
   name: string
   code: string | null
 }
 
-export interface CreateAreaPayload {
+export interface CreateLocationPayload {
   name: string
   code: string | null
 }
 
-export interface UpdateAreaPayload {
+export interface UpdateLocationPayload {
   name?: string
   code?: string | null
 }

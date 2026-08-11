@@ -12,41 +12,41 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getErrorMessage } from '@/lib/errors'
-import { useCreateArea, useUpdateArea } from '../hooks/useAreas'
-import type { SiteArea } from '../types/areas.types'
+import { useCreateLocation, useUpdateLocation } from '../hooks/useLocations'
+import type { SiteLocation } from '../types/locations.types'
 
-interface AreaFormDialogProps {
+interface LocationFormDialogProps {
   mode: 'create' | 'edit'
   siteId: string
-  area?: SiteArea | null
+  location?: SiteLocation | null
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
-export function AreaFormDialog({ mode, siteId, area, open, onOpenChange }: AreaFormDialogProps) {
-  const [name, setName] = useState(() => (mode === 'edit' && area ? area.name : ''))
-  const [code, setCode] = useState(() => (mode === 'edit' && area ? area.code ?? '' : ''))
+export function LocationFormDialog({ mode, siteId, location, open, onOpenChange }: LocationFormDialogProps) {
+  const [name, setName] = useState(() => (mode === 'edit' && location ? location.name : ''))
+  const [code, setCode] = useState(() => (mode === 'edit' && location ? location.code ?? '' : ''))
 
-  const createArea = useCreateArea()
-  const updateArea = useUpdateArea()
+  const createLocation = useCreateLocation()
+  const updateLocation = useUpdateLocation()
 
   async function handleSubmit() {
     try {
       if (mode === 'edit') {
-        if (!area) return
+        if (!location) return
 
-        await updateArea.mutateAsync({
+        await updateLocation.mutateAsync({
           siteId,
-          areaId: area.id,
+          locationId: location.id,
           payload: {
             name: name.trim(),
             code: code.trim() || null,
           },
         })
 
-        toast.success('Area updated')
+        toast.success('Location updated')
       } else {
-        await createArea.mutateAsync({
+        await createLocation.mutateAsync({
           siteId,
           payload: {
             name: name.trim(),
@@ -54,12 +54,14 @@ export function AreaFormDialog({ mode, siteId, area, open, onOpenChange }: AreaF
           },
         })
 
-        toast.success('Area created')
+        toast.success('Location created')
       }
 
       onOpenChange(false)
     } catch (error) {
-      toast.error(getErrorMessage(error, mode === 'create' ? 'Failed to create area' : 'Failed to update area'))
+      toast.error(
+        getErrorMessage(error, mode === 'create' ? 'Failed to create location' : 'Failed to update location'),
+      )
     }
   }
 
@@ -67,17 +69,17 @@ export function AreaFormDialog({ mode, siteId, area, open, onOpenChange }: AreaF
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[420px] gap-4">
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? 'Create Area' : 'Edit Area'}</DialogTitle>
+          <DialogTitle>{mode === 'create' ? 'Create Location' : 'Edit Location'}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="area-name">Name</Label>
-          <Input id="area-name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Label htmlFor="location-name">Name</Label>
+          <Input id="location-name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="area-code">Code (optional)</Label>
-          <Input id="area-code" value={code} onChange={(e) => setCode(e.target.value)} />
+          <Label htmlFor="location-code">Code (optional)</Label>
+          <Input id="location-code" value={code} onChange={(e) => setCode(e.target.value)} />
         </div>
 
         <DialogFooter>
@@ -85,7 +87,7 @@ export function AreaFormDialog({ mode, siteId, area, open, onOpenChange }: AreaF
 
           <Button
             onClick={handleSubmit}
-            loading={createArea.isPending || updateArea.isPending}
+            loading={createLocation.isPending || updateLocation.isPending}
             disabled={!name.trim()}
           >
             {mode === 'create' ? 'Create' : 'Save'}

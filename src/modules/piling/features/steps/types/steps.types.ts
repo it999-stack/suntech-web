@@ -17,6 +17,7 @@ export interface SiteStep {
   stepName: string
   sequenceOrder: number
   track: PilingTrack
+  isSplittable: boolean
   templates: StepDimensionTemplate[]
 }
 

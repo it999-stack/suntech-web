@@ -29,8 +29,8 @@ export type PileListStatus = 'PENDING' | 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLE
 export interface SitePileListItem {
   id: string
   pileIdCode: string
-  areaLocation: string | null
-  areaName: string | null
+  area: string | null
+  locationName: string | null
   status: PileListStatus
 }
 

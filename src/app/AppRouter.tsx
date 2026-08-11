@@ -9,7 +9,7 @@ import PilingDashboardPage from '@/modules/piling/features/dashboard/pages'
 import SiteDetailPage from '@/modules/piling/features/dashboard/pages/SiteDetailPage'
 import SitesPage from '@/modules/piling/features/sites/pages'
 import SiteAppUsersPage from '@/modules/piling/features/sites/pages/site-detail/SiteAppUsersPage'
-import SiteAreasPage from '@/modules/piling/features/sites/pages/site-detail/SiteAreasPage'
+import SiteLocationsPage from '@/modules/piling/features/sites/pages/site-detail/SiteLocationsPage'
 import SiteDetailLayout from '@/modules/piling/features/sites/pages/site-detail/SiteDetailLayout'
 import SiteDrawingsPage from '@/modules/piling/features/sites/pages/site-detail/SiteDrawingsPage'
 import SiteMachinesPage from '@/modules/piling/features/sites/pages/site-detail/SiteMachinesPage'
@@ -46,7 +46,7 @@ export const router = createBrowserRouter([
                 children: [
                   { index: true, element: <Navigate to="piles" replace /> },
                   { path: 'piles', element: <SitePilesPage /> },
-                  { path: 'areas', element: <SiteAreasPage /> },
+                  { path: 'locations', element: <SiteLocationsPage /> },
                   { path: 'piling-steps', element: <SitePilingStepsPage /> },
                   { path: 'drawings', element: <SiteDrawingsPage /> },
                   { path: 'personnel', element: <SitePersonnelPage /> },

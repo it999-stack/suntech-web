@@ -27,6 +27,7 @@ interface RawStepWithTemplates {
   step_name: string
   sequence_order: number
   track: PilingTrack
+  is_splittable: boolean
   templates: RawDurationTemplateNested[]
 }
 
@@ -50,6 +51,7 @@ function mapStep(raw: RawStepWithTemplates): SiteStep {
     stepName: raw.step_name,
     sequenceOrder: raw.sequence_order,
     track: raw.track,
+    isSplittable: raw.is_splittable,
     templates: raw.templates.map((template) => mapTemplate(template, raw)),
   }
 }
@@ -77,8 +79,13 @@ async function updateDurationTemplate(templateId: string, payload: UpsertDuratio
   })
 }
 
+async function updateStep(stepId: string, isSplittable: boolean): Promise<void> {
+  await apiClient.patch(`/piling/steps/${stepId}`, { is_splittable: isSplittable })
+}
+
 export const stepsService = {
   getStepsForSite,
   createDurationTemplate,
   updateDurationTemplate,
+  updateStep,
 }

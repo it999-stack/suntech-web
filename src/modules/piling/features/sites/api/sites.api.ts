@@ -27,8 +27,8 @@ interface RawSite {
 interface RawSitePileListItem {
   id: string
   pile_id_code: string
-  area_location: string | null
-  area_name: string | null
+  area: string | null
+  location_name: string | null
   status: SitePileListItem['status']
 }
 
@@ -61,8 +61,8 @@ function mapSitePileListItem(raw: RawSitePileListItem): SitePileListItem {
   return {
     id: raw.id,
     pileIdCode: raw.pile_id_code,
-    areaLocation: raw.area_location,
-    areaName: raw.area_name,
+    area: raw.area,
+    locationName: raw.location_name,
     status: raw.status,
   }
 }

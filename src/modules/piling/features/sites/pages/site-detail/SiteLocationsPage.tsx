@@ -6,43 +6,43 @@ import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { AreaFormDialog } from '../../../areas/components/AreaFormDialog'
-import { DeleteAreaDialog } from '../../../areas/components/DeleteAreaDialog'
-import { useSiteAreas } from '../../../areas/hooks/useAreas'
-import type { SiteArea } from '../../../areas/types/areas.types'
+import { LocationFormDialog } from '../../../locations/components/LocationFormDialog'
+import { DeleteLocationDialog } from '../../../locations/components/DeleteLocationDialog'
+import { useSiteLocations } from '../../../locations/hooks/useLocations'
+import type { SiteLocation } from '../../../locations/types/locations.types'
 
-export default function SiteAreasPage() {
+export default function SiteLocationsPage() {
   const { siteId } = useParams<{ siteId: string }>()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [areaToEdit, setAreaToEdit] = useState<SiteArea | null>(null)
-  const [areaToDelete, setAreaToDelete] = useState<SiteArea | null>(null)
+  const [locationToEdit, setLocationToEdit] = useState<SiteLocation | null>(null)
+  const [locationToDelete, setLocationToDelete] = useState<SiteLocation | null>(null)
 
-  const areasQuery = useSiteAreas(siteId)
-  const areas = areasQuery.data ?? []
+  const locationsQuery = useSiteLocations(siteId)
+  const locations = locationsQuery.data ?? []
 
   return (
     <>
-      {areasQuery.isLoading ? (
+      {locationsQuery.isLoading ? (
         <TableSkeleton rows={8} columns={3} />
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Areas</CardTitle>
+            <CardTitle>Locations</CardTitle>
 
             <CardAction>
               <Button onClick={() => setCreateDialogOpen(true)}>
                 <PlusIcon className="mr-2 h-4 w-4" />
-                Create Area
+                Create Location
               </Button>
             </CardAction>
           </CardHeader>
 
           <CardContent>
-            {areas.length === 0 ? (
+            {locations.length === 0 ? (
               <EmptyState
                 icon={MapIcon}
-                title="No areas yet"
-                description="Areas added to this site will show up here."
+                title="No locations yet"
+                description="Locations added to this site will show up here."
               />
             ) : (
               <Table>
@@ -54,19 +54,19 @@ export default function SiteAreasPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {areas.map((area) => (
-                    <TableRow key={area.id}>
-                      <TableCell className="font-medium text-foreground">{area.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{area.code ?? '—'}</TableCell>
+                  {locations.map((location) => (
+                    <TableRow key={location.id}>
+                      <TableCell className="font-medium text-foreground">{location.name}</TableCell>
+                      <TableCell className="text-muted-foreground">{location.code ?? '—'}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon-sm" onClick={() => setAreaToEdit(area)}>
+                        <Button variant="ghost" size="icon-sm" onClick={() => setLocationToEdit(location)}>
                           <PencilLine />
-                          <span className="sr-only">Edit {area.name}</span>
+                          <span className="sr-only">Edit {location.name}</span>
                         </Button>
 
-                        <Button variant="ghost" size="icon-sm" onClick={() => setAreaToDelete(area)}>
+                        <Button variant="ghost" size="icon-sm" onClick={() => setLocationToDelete(location)}>
                           <Trash2Icon className="text-destructive" />
-                          <span className="sr-only">Delete {area.name}</span>
+                          <span className="sr-only">Delete {location.name}</span>
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -79,7 +79,7 @@ export default function SiteAreasPage() {
       )}
 
       {siteId && (
-        <AreaFormDialog
+        <LocationFormDialog
           key={String(createDialogOpen)}
           mode="create"
           siteId={siteId}
@@ -89,25 +89,25 @@ export default function SiteAreasPage() {
       )}
 
       {siteId && (
-        <AreaFormDialog
-          key={areaToEdit?.id}
+        <LocationFormDialog
+          key={locationToEdit?.id}
           mode="edit"
           siteId={siteId}
-          area={areaToEdit}
-          open={areaToEdit !== null}
+          location={locationToEdit}
+          open={locationToEdit !== null}
           onOpenChange={(nextOpen) => {
-            if (!nextOpen) setAreaToEdit(null)
+            if (!nextOpen) setLocationToEdit(null)
           }}
         />
       )}
 
       {siteId && (
-        <DeleteAreaDialog
+        <DeleteLocationDialog
           siteId={siteId}
-          area={areaToDelete}
-          open={areaToDelete !== null}
+          location={locationToDelete}
+          open={locationToDelete !== null}
           onOpenChange={(nextOpen) => {
-            if (!nextOpen) setAreaToDelete(null)
+            if (!nextOpen) setLocationToDelete(null)
           }}
         />
       )}

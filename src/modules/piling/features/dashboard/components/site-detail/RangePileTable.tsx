@@ -150,7 +150,7 @@ export function RangePileTable({ rows, siteId, from, to }: RangePileTableProps) 
               {filteredRows.map((row) => (
                 <TableRow key={row.id} className="cursor-pointer" onClick={() => setSelectedPileId(row.id)}>
                   <TableCell className="font-medium text-foreground">{row.pileIdCode}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.areaLocation ?? '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">{row.area ?? '—'}</TableCell>
                   <TableCell>
                     <StatusPill kind={toStepStatus(row.status)} />
                   </TableCell>
@@ -196,7 +196,7 @@ export function RangePileTable({ rows, siteId, from, to }: RangePileTableProps) 
           <PileDetailSheet
             rows={selectedStepsQuery.data}
             pileIdCode={selectedPile.pileIdCode}
-            areaLocation={selectedPile.areaLocation}
+            area={selectedPile.area}
             status={toStepStatus(selectedPile.status)}
             selectedDate={to}
             open={!!selectedPileId}
