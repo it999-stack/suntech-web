@@ -29,6 +29,9 @@ interface RawSitePileListItem {
   pile_id_code: string
   area: string | null
   location_name: string | null
+  dimension_dia: number
+  dimension_depth: number
+  dimension_label: string | null
   status: SitePileListItem['status']
 }
 
@@ -63,6 +66,9 @@ function mapSitePileListItem(raw: RawSitePileListItem): SitePileListItem {
     pileIdCode: raw.pile_id_code,
     area: raw.area,
     locationName: raw.location_name,
+    dimensionDia: raw.dimension_dia,
+    dimensionDepth: raw.dimension_depth,
+    dimensionLabel: raw.dimension_label,
     status: raw.status,
   }
 }

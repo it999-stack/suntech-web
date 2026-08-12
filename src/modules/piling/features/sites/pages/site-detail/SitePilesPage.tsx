@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { PageSizeSelect } from '@/components/PageSizeSelect'
 import { Pagination } from '@/components/Pagination'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -91,8 +92,9 @@ export default function SitePilesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Pile Id</TableHead>
-                      <TableHead>Area</TableHead>
                       <TableHead>Location</TableHead>
+                      <TableHead>Area</TableHead>
+                      <TableHead>Dimensions</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -101,8 +103,15 @@ export default function SitePilesPage() {
                     {piles.map((pile) => (
                       <TableRow key={pile.id}>
                         <TableCell className="font-medium text-foreground">{pile.pileIdCode}</TableCell>
-                        <TableCell className="text-muted-foreground">{pile.area ?? '—'}</TableCell>
                         <TableCell className="text-muted-foreground">{pile.locationName ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">{pile.area ?? '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {pile.dimensionLabel?.trim()
+                              ? pile.dimensionLabel
+                              : `${pile.dimensionDia}mm × ${pile.dimensionDepth}m`}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <PileStatusBadge status={pile.status} />
                         </TableCell>

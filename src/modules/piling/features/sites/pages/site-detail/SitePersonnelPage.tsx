@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PencilLine, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react'
+import { PencilLine, PlusIcon, Trash2Icon, UploadIcon, UsersIcon } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
@@ -9,12 +9,15 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DeletePersonnelDialog } from '../../../personnel/components/DeletePersonnelDialog'
 import { PersonnelFormDialog } from '../../../personnel/components/PersonnelFormDialog'
+import { PersonnelImportDialog } from '../../../personnel/components/PersonnelImportDialog'
 import { useSitePersonnel } from '../../../personnel/hooks/usePersonnel'
+import { personnelDesignationLabel } from '../../../personnel/types/personnel.types'
 import type { SitePersonnel } from '../../../personnel/types/personnel.types'
 
 export default function SitePersonnelPage() {
   const { siteId } = useParams<{ siteId: string }>()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
   const [personnelToEdit, setPersonnelToEdit] = useState<SitePersonnel | null>(null)
   const [personnelToDelete, setPersonnelToDelete] = useState<SitePersonnel | null>(null)
 
@@ -24,17 +27,24 @@ export default function SitePersonnelPage() {
   return (
     <>
       {personnelQuery.isLoading ? (
-        <TableSkeleton rows={8} columns={5} />
+        <TableSkeleton rows={8} columns={6} />
       ) : (
         <Card>
           <CardHeader>
             <CardTitle>Site Personnel</CardTitle>
 
             <CardAction>
-              <Button onClick={() => setCreateDialogOpen(true)}>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Create Personnel
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                  <UploadIcon className="mr-2 h-4 w-4" />
+                  Import
+                </Button>
+
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Create Personnel
+                </Button>
+              </div>
             </CardAction>
           </CardHeader>
 
@@ -50,6 +60,7 @@ export default function SitePersonnelPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead>Employee Code</TableHead>
                     <TableHead>Designation</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Status</TableHead>
@@ -60,7 +71,10 @@ export default function SitePersonnelPage() {
                   {personnel.map((person) => (
                     <TableRow key={person.id}>
                       <TableCell className="font-medium text-foreground">{person.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{person.designation}</TableCell>
+                      <TableCell className="text-muted-foreground">{person.employeeCode ?? '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {personnelDesignationLabel(person.designation)}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{person.phone ?? '—'}</TableCell>
                       <TableCell>
                         <Badge variant={person.isActive ? 'secondary' : 'outline'}>
@@ -95,6 +109,10 @@ export default function SitePersonnelPage() {
           open={createDialogOpen}
           onOpenChange={setCreateDialogOpen}
         />
+      )}
+
+      {siteId && (
+        <PersonnelImportDialog siteId={siteId} open={importDialogOpen} onOpenChange={setImportDialogOpen} />
       )}
 
       {siteId && (

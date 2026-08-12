@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { personnelService } from '../api/personnel.api'
-import type { CreatePersonnelPayload, UpdatePersonnelPayload } from '../types/personnel.types'
+import type {
+  CreatePersonnelPayload,
+  PersonnelImportRowResult,
+  UpdatePersonnelPayload,
+} from '../types/personnel.types'
 
 export const personnelQueryKeys = {
   bySite: (siteId: string) => ['piling-sites', siteId, 'personnel'] as const,
@@ -52,6 +56,26 @@ export function useDeletePersonnel() {
   return useMutation({
     mutationFn: ({ personnelId }: { siteId: string; personnelId: string }) =>
       personnelService.deletePersonnel(personnelId),
+
+    onSuccess: (_data, { siteId }) => {
+      queryClient.invalidateQueries({ queryKey: personnelQueryKeys.bySite(siteId) })
+    },
+  })
+}
+
+export function usePreviewPersonnelImport() {
+  return useMutation({
+    mutationFn: ({ siteId, file }: { siteId: string; file: File }) =>
+      personnelService.previewPersonnelImport(siteId, file),
+  })
+}
+
+export function useConfirmPersonnelImport() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ siteId, rows }: { siteId: string; rows: PersonnelImportRowResult[] }) =>
+      personnelService.confirmPersonnelImport(siteId, rows),
 
     onSuccess: (_data, { siteId }) => {
       queryClient.invalidateQueries({ queryKey: personnelQueryKeys.bySite(siteId) })

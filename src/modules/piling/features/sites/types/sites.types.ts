@@ -31,6 +31,9 @@ export interface SitePileListItem {
   pileIdCode: string
   area: string | null
   locationName: string | null
+  dimensionDia: number
+  dimensionDepth: number
+  dimensionLabel: string | null
   status: PileListStatus
 }
 
