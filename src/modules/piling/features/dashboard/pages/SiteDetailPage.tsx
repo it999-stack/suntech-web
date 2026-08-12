@@ -7,6 +7,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
@@ -32,7 +38,7 @@ import {
 export default function SiteDetailPage() {
   const { siteId } = useParams<{ siteId: string }>()
   const [range, setRange] = useState<{ from: string; to: string }>({ from: today(), to: today() })
-  const [isExporting, setIsExporting] = useState(false)
+  const [exportingType, setExportingType] = useState<'delay' | 'boring' | null>(null)
   const isSingleDay = range.from === range.to
 
   const siteQuery = useSite(siteId)
@@ -71,24 +77,26 @@ export default function SiteDetailPage() {
 
   const checklistId = planStateQuery.data?.exists ? planStateQuery.data.checklistId : null
 
-  async function handleExportReport() {
+  async function handleExport(type: 'delay' | 'boring') {
     if (!checklistId) return
-    setIsExporting(true)
+    setExportingType(type)
     try {
-      const { data } = await apiClient.get(`/piling/checklists/${checklistId}/export/delay-report`, {
+      const endpoint = type === 'delay' ? 'delay-report' : 'boring-checklist'
+      const filenamePrefix = type === 'delay' ? 'piling_delay_report' : 'piling_boring_checklist'
+      const { data } = await apiClient.get(`/piling/checklists/${checklistId}/export/${endpoint}`, {
         responseType: 'blob',
       })
       const url = URL.createObjectURL(data)
       const link = document.createElement('a')
       link.href = url
-      link.download = `piling_delay_report_${range.from}.xlsx`
+      link.download = `${filenamePrefix}_${range.from}.xlsx`
       link.click()
       URL.revokeObjectURL(url)
       toast.success('Report downloaded successfully')
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to export report'))
     } finally {
-      setIsExporting(false)
+      setExportingType(null)
     }
   }
 
@@ -120,15 +128,34 @@ export default function SiteDetailPage() {
 
         <div className="flex items-center gap-2">
           {isSingleDay && checklistId && (
-            <Button
-              variant="outline"
-              size="sm"
-              title="Export Report"
-              loading={isExporting}
-              onClick={handleExportReport}
-            >
-              {!isExporting && <DownloadIcon className="size-4 text-muted-foreground" />}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 font-normal"
+                    title="Download Report"
+                    loading={exportingType !== null}
+                  />
+                }
+              >
+                {!exportingType && (
+                  <>
+                    <DownloadIcon className="size-4 text-muted-foreground" />
+                    <span>Download Report</span>
+                  </>
+                )}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem disabled={exportingType !== null} onClick={() => handleExport('delay')}>
+                  Delay Report
+                </DropdownMenuItem>
+                <DropdownMenuItem disabled={exportingType !== null} onClick={() => handleExport('boring')}>
+                  Boring Checklist
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <Popover>
             <PopoverTrigger render={<Button variant="outline" size="sm" className="gap-2 font-normal" />}>
