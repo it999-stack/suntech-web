@@ -279,8 +279,9 @@ export function resolvePlannedEnd(row: ChecklistStepRow): string | null {
 
 // One point per hour tick across the day's planned working window — feeds the
 // site-level plan-vs-actual timeline (cumulative piles completed vs planned).
-// A pile's completion event is its final step (max sequenceOrder is globally
-// unique per PilingStep, so this is well-defined regardless of track).
+// A pile's completion event is its final step (max sequenceOrder is unique
+// per site's own step order — pil_site_steps — so this is well-defined
+// regardless of track; every row here always belongs to one pile/one site).
 export function buildSitePlanVsActualTimeline(rows: ChecklistStepRow[], selectedDate: string): SitePlanVsActualPoint[] {
   if (rows.length === 0) return []
 

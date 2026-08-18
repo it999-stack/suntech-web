@@ -13,7 +13,8 @@ export interface StepDimensionTemplate {
 }
 
 export interface SiteStep {
-  id: string
+  id: string // pil_site_steps id
+  stepId: string // catalog pil_steps id
   stepName: string
   sequenceOrder: number
   track: PilingTrack
@@ -21,9 +22,21 @@ export interface SiteStep {
   templates: StepDimensionTemplate[]
 }
 
+export interface CatalogStep {
+  id: string
+  stepName: string
+  track: PilingTrack
+}
+
 export interface UpsertDurationTemplatePayload {
   dimensionId: string
   stepId: string
   durationMinutes: number
   bufferBeforeMinutes: number
+}
+
+export interface AddSiteStepPayload {
+  stepId: string
+  isSplittable?: boolean
+  insertAfterSiteStepId?: string
 }

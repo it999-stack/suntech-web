@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ListOrderedIcon, PencilLine, PenLine, PlusIcon, RulerIcon, Trash2Icon } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/EmptyState'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { ReorderList } from '@/components/shadix-ui/components/reorder-list'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -15,8 +16,10 @@ import { DeleteDimensionDialog } from '../../../dimensions/components/DeleteDime
 import { DimensionFormDialog } from '../../../dimensions/components/DimensionFormDialog'
 import { useSiteDimensions } from '../../../dimensions/hooks/useDimensions'
 import type { SiteDimension } from '../../../dimensions/types/dimensions.types'
+import { AddSiteStepDialog } from '../../../steps/components/AddSiteStepDialog'
 import { DurationTemplateFormDialog } from '../../../steps/components/DurationTemplateFormDialog'
-import { useSiteSteps, useUpdateStep } from '../../../steps/hooks/useSteps'
+import { RemoveSiteStepDialog } from '../../../steps/components/RemoveSiteStepDialog'
+import { useReorderSiteSteps, useSiteSteps, useUpdateStep } from '../../../steps/hooks/useSteps'
 import type { SiteStep, StepDimensionTemplate } from '../../../steps/types/steps.types'
 
 const trackVariant = {
@@ -31,27 +34,72 @@ function templateLabel(template: StepDimensionTemplate) {
 
 export default function SitePilingStepsPage() {
   const { siteId } = useParams<{ siteId: string }>()
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [addStepDialogOpen, setAddStepDialogOpen] = useState(false)
+  const [addDurationDialogOpen, setAddDurationDialogOpen] = useState(false)
   const [templateToEdit, setTemplateToEdit] = useState<StepDimensionTemplate | null>(null)
+  const [stepToRemove, setStepToRemove] = useState<SiteStep | null>(null)
 
   const [createDimensionDialogOpen, setCreateDimensionDialogOpen] = useState(false)
   const [dimensionToEdit, setDimensionToEdit] = useState<SiteDimension | null>(null)
   const [dimensionToDelete, setDimensionToDelete] = useState<SiteDimension | null>(null)
 
   const stepsQuery = useSiteSteps(siteId)
-  const configuredSteps = (stepsQuery.data ?? []).filter((step) => step.templates.length > 0)
+  const steps = stepsQuery.data ?? []
+  // Only steps with a duration configured for this site are shown/draggable —
+  // an added-but-unconfigured step stays invisible here until someone sets
+  // its duration via Add Duration.
+  const visibleSteps = steps.filter((step) => step.templates.length > 0)
+
+  // Uncontrolled internally (only reads props.children on mount) — remount
+  // whenever the visible set changes (add/remove/refetch) so drag state
+  // never goes stale against what the server actually has.
+  const [orderedStepsKey, setOrderedStepsKey] = useState('')
+  useEffect(() => {
+    setOrderedStepsKey(visibleSteps.map((step) => step.id).join(','))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [steps])
 
   const dimensionsQuery = useSiteDimensions(siteId)
   const dimensions = dimensionsQuery.data ?? []
 
   const updateStep = useUpdateStep()
+  const reorderSteps = useReorderSiteSteps()
 
   async function handleToggleSplittable(step: SiteStep, isSplittable: boolean) {
     if (!siteId) return
     try {
-      await updateStep.mutateAsync({ siteId, stepId: step.id, isSplittable })
+      await updateStep.mutateAsync({ siteId, siteStepId: step.id, isSplittable })
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to update step'))
+    }
+  }
+
+  async function handleReorderFinish(newOrder: React.ReactElement[]) {
+    if (!siteId) return
+    // ReorderList seeds its internal state via React.Children.toArray, which
+    // rewrites each element's .key to an internal-use path-prefixed string —
+    // never the raw value we set via the `key` prop. A separate data
+    // attribute (untouched by that rewrite) is the only reliable way to get
+    // the real site-step id back out.
+    const newVisibleIds = newOrder.map((item) => {
+      const props = item.props as { 'data-site-step-id'?: string }
+      return String(props['data-site-step-id'])
+    })
+
+    // The reorder endpoint requires every one of the site's steps, not just
+    // the visible/templated ones being dragged — walk the full list and
+    // splice the newly-dragged order into the visible slots, leaving
+    // untemplated (hidden) steps exactly where they already were.
+    const visibleIdSet = new Set(visibleSteps.map((step) => step.id))
+    let cursor = 0
+    const orderedSiteStepIds = steps.map((step) =>
+      visibleIdSet.has(step.id) ? newVisibleIds[cursor++] : step.id
+    )
+
+    try {
+      await reorderSteps.mutateAsync({ siteId, orderedSiteStepIds })
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Failed to reorder steps'))
     }
   }
 
@@ -61,8 +109,12 @@ export default function SitePilingStepsPage() {
         <CardHeader>
           <CardTitle>Piling Steps</CardTitle>
 
-          <CardAction>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+          <CardAction className="flex gap-2">
+            <Button variant="outline" onClick={() => setAddDurationDialogOpen(true)} disabled={steps.length === 0}>
+              <PlusIcon className="mr-2 h-4 w-4" />
+              Add Duration
+            </Button>
+            <Button onClick={() => setAddStepDialogOpen(true)}>
               <PlusIcon className="mr-2 h-4 w-4" />
               Add Step
             </Button>
@@ -71,21 +123,27 @@ export default function SitePilingStepsPage() {
 
         <CardContent>
           {stepsQuery.isLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <Skeleton key={index} className="h-32 rounded-lg" />
+            <div className="flex flex-col gap-3">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="h-24 rounded-lg" />
               ))}
             </div>
-          ) : configuredSteps.length === 0 ? (
+          ) : steps.length === 0 ? (
             <EmptyState
               icon={ListOrderedIcon}
               title="No piling steps configured yet"
-              description="Click Add Step to configure a step's duration for this site."
+              description="Click Add Step to add a step from the catalog to this site."
+            />
+          ) : visibleSteps.length === 0 ? (
+            <EmptyState
+              icon={ListOrderedIcon}
+              title="No step durations configured yet"
+              description="Click Add Duration to set a duration for one of this site's steps — it'll show up here once configured."
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {configuredSteps.map((step, index) => (
-                <Card key={step.id} className="gap-3 py-4">
+            <ReorderList key={orderedStepsKey} withDragHandle onReorderFinish={handleReorderFinish} className="gap-3">
+              {visibleSteps.map((step, index) => (
+                <Card key={step.id} data-site-step-id={step.id} className="gap-3 py-4">
                   <CardHeader className="px-4">
                     <div className="flex items-center gap-2">
                       <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
@@ -108,6 +166,11 @@ export default function SitePilingStepsPage() {
                       </div>
 
                       <Badge variant={trackVariant[step.track]}>{step.track}</Badge>
+
+                      <Button variant="ghost" size="icon-xs" onClick={() => setStepToRemove(step)}>
+                        <Trash2Icon className="text-destructive" />
+                        <span className="sr-only">Remove {step.stepName} from this site</span>
+                      </Button>
                     </CardAction>
                   </CardHeader>
 
@@ -122,11 +185,7 @@ export default function SitePilingStepsPage() {
                             {template.bufferBeforeMinutes > 0 && ` + ${template.bufferBeforeMinutes} min buffer`}
                           </span>
 
-                          <Button
-                            variant="ghost"
-                            size="icon-xs"
-                            onClick={() => setTemplateToEdit(template)}
-                          >
+                          <Button variant="ghost" size="icon-xs" onClick={() => setTemplateToEdit(template)}>
                             <PencilLine className="text-muted-foreground" />
                             <span className="sr-only">Edit {templateLabel(template)} duration</span>
                           </Button>
@@ -136,7 +195,7 @@ export default function SitePilingStepsPage() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+            </ReorderList>
           )}
         </CardContent>
       </Card>
@@ -202,18 +261,38 @@ export default function SitePilingStepsPage() {
       )}
 
       {siteId && (
-        <DurationTemplateFormDialog
-          key={`step-create-${createDialogOpen}`}
-          mode="create"
+        <AddSiteStepDialog
+          key={`step-add-${addStepDialogOpen}`}
           siteId={siteId}
-          open={createDialogOpen}
-          onOpenChange={setCreateDialogOpen}
+          open={addStepDialogOpen}
+          onOpenChange={setAddStepDialogOpen}
+        />
+      )}
+
+      {siteId && (
+        <RemoveSiteStepDialog
+          siteId={siteId}
+          step={stepToRemove}
+          open={stepToRemove !== null}
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) setStepToRemove(null)
+          }}
         />
       )}
 
       {siteId && (
         <DurationTemplateFormDialog
-          key={`step-edit-${templateToEdit?.id}`}
+          key={`duration-create-${addDurationDialogOpen}`}
+          mode="create"
+          siteId={siteId}
+          open={addDurationDialogOpen}
+          onOpenChange={setAddDurationDialogOpen}
+        />
+      )}
+
+      {siteId && (
+        <DurationTemplateFormDialog
+          key={`duration-edit-${templateToEdit?.id}`}
           mode="edit"
           siteId={siteId}
           editingTemplate={templateToEdit}

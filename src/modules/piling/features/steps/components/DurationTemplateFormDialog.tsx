@@ -74,11 +74,11 @@ export function DurationTemplateFormDialog({
   const dimensions = dimensionsQuery.data ?? []
 
   const stepSelectItems = useMemo(
-    () => steps.map((step) => ({ value: step.id, label: step.stepName })),
+    () => steps.map((step) => ({ value: step.stepId, label: step.stepName })),
     [steps]
   )
 
-  const selectedStep = steps.find((step) => step.id === stepId)
+  const selectedStep = steps.find((step) => step.stepId === stepId)
   const configuredDimensionIds = useMemo(
     () => new Set((selectedStep?.templates ?? []).map((template) => template.dimensionId)),
     [selectedStep]
