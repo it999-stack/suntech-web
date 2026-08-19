@@ -6,11 +6,12 @@ import type {
   ChecklistDetail,
   ChecklistStatus,
   ChecklistStepRow,
-  ConcreteUsage,
+  ContractorSummary,
   MachineDowntimeWindow,
   MachineSummary,
   NonWorkingWindow,
   PileLifecycle,
+  PileMeasurements,
   PileProgressRow,
   PilingTrack,
   PlanState,
@@ -78,13 +79,30 @@ interface RawDimension {
 }
 
 interface RawPileSummary {
+  id: string
   pile_id_code: string
   area: string | null
   dimension: RawDimension | null
 }
 
-interface RawConcreteUsage {
+interface RawContractorSummary {
   id: string
+  name: string
+}
+
+interface RawPileMeasurements {
+  egl_m: number | null
+  pile_contractor_id: string | null
+  pile_contractor: RawContractorSummary | null
+  cage_contractor_id: string | null
+  cage_contractor: RawContractorSummary | null
+  pile_length_m: number | null
+  cage_weight_kg: number | null
+  ctl_m: number | null
+  col_m: number | null
+  bore_depth_m: number | null
+  hook_length_m: number | null
+  fl_m: number | null
   planned_qty_m3: number | null
   actual_qty_m3: number | null
 }
@@ -98,7 +116,7 @@ interface RawChecklistPile {
   crane: RawMachineSummary
   plan_steps: RawPlanStep[]
   actual_steps: RawActualStep[]
-  concrete_usage: RawConcreteUsage | null
+  measurements: RawPileMeasurements | null
   total_applicable_steps: number | null
   is_plan_complete: boolean | null
 }
@@ -186,9 +204,29 @@ function deriveStepStatus(
   return now > new Date(plannedStart) ? 'delayed' : 'pending'
 }
 
-function mapConcreteUsage(raw: RawConcreteUsage | null): ConcreteUsage | null {
+function mapContractorSummary(raw: RawContractorSummary | null): ContractorSummary | null {
   if (!raw) return null
-  return { plannedM3: raw.planned_qty_m3, actualM3: raw.actual_qty_m3 }
+  return { id: raw.id, name: raw.name }
+}
+
+function mapMeasurements(raw: RawPileMeasurements | null): PileMeasurements | null {
+  if (!raw) return null
+  return {
+    eglM: raw.egl_m,
+    pileContractorId: raw.pile_contractor_id,
+    pileContractor: mapContractorSummary(raw.pile_contractor),
+    cageContractorId: raw.cage_contractor_id,
+    cageContractor: mapContractorSummary(raw.cage_contractor),
+    pileLengthM: raw.pile_length_m,
+    cageWeightKg: raw.cage_weight_kg,
+    ctlM: raw.ctl_m,
+    colM: raw.col_m,
+    boreDepthM: raw.bore_depth_m,
+    hookLengthM: raw.hook_length_m,
+    flM: raw.fl_m,
+    plannedQtyM3: raw.planned_qty_m3,
+    actualQtyM3: raw.actual_qty_m3,
+  }
 }
 
 // Shared by the single-day whole-checklist fetch and the range per-pile-steps
@@ -204,6 +242,7 @@ function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date, optio
       const actual = actualByStepId.get(planStep.step_id)
       rows.push({
         checklistPileId: pile.id,
+        pileId: pile.pile.id,
         pileSeqNo: pile.seq_no,
         pileIdCode: pile.pile.pile_id_code,
         pileStatus: pile.status,
@@ -212,7 +251,7 @@ function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date, optio
         pileCrane: mapMachine(pile.crane),
         dimensionDiaMm: pile.pile.dimension?.dia ?? null,
         dimensionDepthM: pile.pile.dimension?.depth ?? null,
-        concreteUsage: mapConcreteUsage(pile.concrete_usage),
+        measurements: mapMeasurements(pile.measurements),
         stepId: planStep.step_id,
         stepName: planStep.step.step_name,
         track: planStep.step.track,

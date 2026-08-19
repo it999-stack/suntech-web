@@ -195,12 +195,15 @@ export function RangePileTable({ rows, siteId, from, to }: RangePileTableProps) 
         selectedStepsQuery.data ? (
           <PileDetailSheet
             rows={selectedStepsQuery.data}
+            pileId={selectedPile.id}
+            siteId={siteId}
             pileIdCode={selectedPile.pileIdCode}
             area={selectedPile.area}
             status={toStepStatus(selectedPile.status)}
             selectedDate={to}
             open={!!selectedPileId}
             onOpenChange={(open) => !open && setSelectedPileId(null)}
+            onMeasurementsSaved={() => invalidateThisPile(selectedPile.id)}
           />
         ) : (
           <Drawer open={!!selectedPileId} onOpenChange={(open) => !open && setSelectedPileId(null)} showSwipeHandle swipeDirection="down">

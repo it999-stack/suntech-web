@@ -11,6 +11,7 @@ const ReorderList: React.FC<ReorderListProps> = ({
     className,
     itemClassName,
     withDragHandle = false,
+    handlePosition = "right",
     onReorderFinish,
     ...props
 }) => {
@@ -42,6 +43,7 @@ const ReorderList: React.FC<ReorderListProps> = ({
                     key={item?.key || index}
                     item={item}
                     withDragHandle={withDragHandle}
+                    handlePosition={handlePosition}
                     className={itemClassName}
                 />
             ))}
@@ -53,7 +55,8 @@ const ReorderListItem: React.FC<{
     item: React.ReactElement;
     className?: string;
     withDragHandle?: boolean;
-}> = ({ item, className, withDragHandle = false }) => {
+    handlePosition?: "left" | "right";
+}> = ({ item, className, withDragHandle = false, handlePosition = "right" }) => {
     const y = useMotionValue(0);
     const boxShadow = useRaisedShadow(y);
     const dragControls = useDragControls();
@@ -77,13 +80,16 @@ const ReorderListItem: React.FC<{
                     {React.isValidElement<{ className?: string }>(item)
                         ? React.cloneElement(item, {
                               className: cn(
-                                  "pr-12 w-full",
+                                  handlePosition === "left" ? "pl-8 w-full" : "pr-12 w-full",
                                   item.props.className,
                               ),
                           })
                         : item}
                     <Grip
-                        className="size-6 absolute cursor-grab right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        className={cn(
+                            "size-4 absolute cursor-grab top-1/2 -translate-y-1/2 text-muted-foreground",
+                            handlePosition === "left" ? "left-2" : "right-4",
+                        )}
                         onPointerDown={(e) => dragControls.start(e)}
                     />
                 </div>
@@ -104,6 +110,8 @@ export interface ReorderListProps
     itemClassName?: string;
     /** @public (optional) - With drag handle */
     withDragHandle?: boolean;
+    /** @public (optional) - Which side of the item the drag handle sits on */
+    handlePosition?: "left" | "right";
     /** @public (optional) - When the list is reordered */
     onReorderFinish?: (newOrder: React.ReactElement[]) => void;
 }

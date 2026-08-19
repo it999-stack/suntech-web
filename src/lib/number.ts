@@ -6,6 +6,14 @@ export function formatM3(value: number | null): string {
   return formatNullable(value, (v) => `${v.toFixed(2)} m³`)
 }
 
+export function formatMeters(value: number | null): string {
+  return formatNullable(value, (v) => `${v.toFixed(2)} m`)
+}
+
+export function formatKg(value: number | null): string {
+  return formatNullable(value, (v) => `${v.toFixed(2)} kg`)
+}
+
 export function formatPercent(value: number): string {
   return `${Math.round(value)}%`
 }

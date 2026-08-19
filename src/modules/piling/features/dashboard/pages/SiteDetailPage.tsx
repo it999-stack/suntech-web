@@ -212,6 +212,7 @@ export default function SiteDetailPage() {
           /> */}
           <StepStatusTable
             rows={rows}
+            siteId={siteId!}
             selectedDate={range.from}
             checklistId={planStateQuery.data.checklistId!}
             downtimeWindows={checklistQuery.data?.downtimeWindows}

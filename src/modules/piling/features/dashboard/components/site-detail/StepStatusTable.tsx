@@ -39,6 +39,7 @@ import { StatusPill } from './status/StatusPill'
 
 interface StepStatusTableProps {
   rows: ChecklistStepRow[]
+  siteId: string
   selectedDate: string
   checklistId: string
   downtimeWindows?: MachineDowntimeWindow[]
@@ -56,6 +57,7 @@ const statusFilterItems = [
 
 interface PileGroup {
   checklistPileId: string
+  pileId: string
   pileSeqNo: number
   pileIdCode: string
   area: string | null
@@ -103,6 +105,7 @@ function groupByPile(rows: ChecklistStepRow[]): PileGroup[] {
       const first = pileRows[0]
       return {
         checklistPileId: first.checklistPileId,
+        pileId: first.pileId,
         pileSeqNo: first.pileSeqNo,
         pileIdCode: first.pileIdCode,
         area: first.area,
@@ -138,6 +141,7 @@ function formatActualRange(actualStart: string | null, actualEnd: string | null)
 
 export function StepStatusTable({
   rows,
+  siteId,
   selectedDate,
   checklistId,
   downtimeWindows,
@@ -333,6 +337,8 @@ export function StepStatusTable({
       {selectedPile && (
         <PileDetailSheet
           rows={selectedPile.rows}
+          pileId={selectedPile.pileId}
+          siteId={siteId}
           pileIdCode={selectedPile.pileIdCode}
           area={selectedPile.area}
           status={selectedPile.status}
@@ -342,6 +348,7 @@ export function StepStatusTable({
           downtimeWindows={downtimeWindows}
           nonWorkingWindows={nonWorkingWindows}
           planStartTime={planStartTime}
+          onMeasurementsSaved={() => queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.checklist(checklistId) })}
         />
       )}
 

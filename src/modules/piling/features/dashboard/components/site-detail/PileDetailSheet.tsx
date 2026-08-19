@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { ChevronRightIcon, ClockIcon, Info, TimerIcon } from "lucide-react"
+import type { ReactNode } from "react"
+import { ChevronRightIcon, ClockIcon, Info, PencilIcon, TimerIcon } from "lucide-react"
 
 import {
   Drawer,
@@ -16,17 +17,21 @@ import {
 } from "@/components/ui/collapsible"
 
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
+import { Button } from "@/components/ui/button"
 
 import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from "../../types/dashboard.types"
 import { PileTimelinePanel } from "./panel/PileTimelinePanel"
 import { StepStatusLegend } from "./status/StepStatusLegend"
 import { StatusPill } from "./status/StatusPill"
 import { computeDelayTotals, formatDelta } from "./lib/timelineMath"
-import { formatM3 } from "@/lib/number"
+import { formatKg, formatM3, formatMeters } from "@/lib/number"
 import { cn } from "@/lib/utils"
+import { MeasurementsEditDialog } from "./MeasurementsEditDialog"
 
 interface PileDetailSheetProps {
   rows: ChecklistStepRow[]
+  pileId: string
+  siteId: string
   pileIdCode: string
   area: string | null
   status: ChecklistStepRow["status"]
@@ -36,14 +41,21 @@ interface PileDetailSheetProps {
   downtimeWindows?: MachineDowntimeWindow[]
   nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
+  // Fired after the measurements edit dialog saves successfully — caller
+  // invalidates whichever query actually backs `rows` (range-steps query for
+  // the range table, whole-checklist query for the single-day table).
+  onMeasurementsSaved?: () => void
 }
 
-function SectionTrigger({ title }: { title: string }) {
+function SectionTrigger({ title, action }: { title: string; action?: ReactNode }) {
   return (
-    <CollapsibleTrigger className="group/section flex w-full items-center gap-2 rounded-md px-1 py-2 text-left text-sm font-medium hover:bg-muted/50">
-      <ChevronRightIcon className="size-4 transition-transform group-data-[state=open]/section:rotate-90" />
-      {title}
-    </CollapsibleTrigger>
+    <div className="flex w-full items-center justify-between gap-2">
+      <CollapsibleTrigger className="group/section flex flex-1 items-center gap-2 rounded-md px-1 py-2 text-left text-sm font-medium hover:bg-muted/50">
+        <ChevronRightIcon className="size-4 transition-transform group-data-[state=open]/section:rotate-90" />
+        {title}
+      </CollapsibleTrigger>
+      {action}
+    </div>
   )
 }
 
@@ -99,6 +111,8 @@ function DelayGauge({
 
 export function PileDetailSheet({
   rows,
+  pileId,
+  siteId,
   pileIdCode,
   area,
   status,
@@ -108,10 +122,12 @@ export function PileDetailSheet({
   downtimeWindows,
   nonWorkingWindows,
   planStartTime,
+  onMeasurementsSaved,
 }: PileDetailSheetProps) {
-  const [concreteOpen, setConcreteOpen] = useState(false)
+  const [measurementsOpen, setMeasurementsOpen] = useState(false)
+  const [editMeasurementsOpen, setEditMeasurementsOpen] = useState(false)
 
-  const concreteUsage = rows[0]?.concreteUsage ?? null
+  const measurements = rows[0]?.measurements ?? null
   const delayTotals = useMemo(
     () => computeDelayTotals(rows, downtimeWindows ?? [], nonWorkingWindows ?? [], planStartTime ?? null, new Date()),
     [rows, downtimeWindows, nonWorkingWindows, planStartTime]
@@ -185,22 +201,87 @@ export function PileDetailSheet({
             />
 
             <Collapsible
-              open={concreteOpen}
-              onOpenChange={setConcreteOpen}
+              open={measurementsOpen}
+              onOpenChange={setMeasurementsOpen}
               className="rounded-lg border p-3"
             >
-              <SectionTrigger title="Concrete Usage" />
+              <SectionTrigger
+                title="Measurements"
+                action={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Edit measurements"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setEditMeasurementsOpen(true)
+                    }}
+                  >
+                    <PencilIcon className="size-4" />
+                  </Button>
+                }
+              />
 
               <CollapsibleContent className="pt-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-md border bg-muted/30 p-3">
-                    <div className="text-xs text-muted-foreground">Planned</div>
-                    <div className="text-sm font-semibold">{formatM3(concreteUsage?.plannedM3 ?? null)}</div>
+                    <div className="text-xs text-muted-foreground">Existing Ground Level</div>
+                    <div className="text-sm font-semibold">{formatMeters(measurements?.eglM ?? null)}</div>
                   </div>
 
                   <div className="rounded-md border bg-muted/30 p-3">
-                    <div className="text-xs text-muted-foreground">Actual</div>
-                    <div className="text-sm font-semibold">{formatM3(concreteUsage?.actualM3 ?? null)}</div>
+                    <div className="text-xs text-muted-foreground">Pile Length</div>
+                    <div className="text-sm font-semibold">{formatMeters(measurements?.pileLengthM ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Cage Weight</div>
+                    <div className="text-sm font-semibold">{formatKg(measurements?.cageWeightKg ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Pile Contractor</div>
+                    <div className="text-sm font-semibold">{measurements?.pileContractor?.name ?? "—"}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Cage Contractor</div>
+                    <div className="text-sm font-semibold">{measurements?.cageContractor?.name ?? "—"}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Casing Top Level</div>
+                    <div className="text-sm font-semibold">{formatMeters(measurements?.ctlM ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Cut Off Level</div>
+                    <div className="text-sm font-semibold">{formatMeters(measurements?.colM ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Bore Depth</div>
+                    <div className="text-sm font-semibold">{formatMeters(measurements?.boreDepthM ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Hook Length</div>
+                    <div className="text-sm font-semibold">{formatMeters(measurements?.hookLengthM ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Founding Level</div>
+                    <div className="text-sm font-semibold">{formatMeters(measurements?.flM ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Planned Concrete Qty</div>
+                    <div className="text-sm font-semibold">{formatM3(measurements?.plannedQtyM3 ?? null)}</div>
+                  </div>
+
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Actual Concrete Qty</div>
+                    <div className="text-sm font-semibold">{formatM3(measurements?.actualQtyM3 ?? null)}</div>
                   </div>
                 </div>
               </CollapsibleContent>
@@ -208,6 +289,15 @@ export function PileDetailSheet({
           </div>
         </div>
       </DrawerContent>
+
+      <MeasurementsEditDialog
+        pileId={pileId}
+        siteId={siteId}
+        measurements={measurements}
+        open={editMeasurementsOpen}
+        onOpenChange={setEditMeasurementsOpen}
+        onSaved={onMeasurementsSaved}
+      />
     </Drawer>
   )
 }

@@ -74,13 +74,31 @@ export interface PlanState {
   status: ChecklistStatus | null
 }
 
-export interface ConcreteUsage {
-  plannedM3: number | null
-  actualM3: number | null
+export interface ContractorSummary {
+  id: string
+  name: string
+}
+
+export interface PileMeasurements {
+  eglM: number | null
+  pileContractorId: string | null
+  pileContractor: ContractorSummary | null
+  cageContractorId: string | null
+  cageContractor: ContractorSummary | null
+  pileLengthM: number | null
+  cageWeightKg: number | null
+  ctlM: number | null
+  colM: number | null
+  boreDepthM: number | null
+  hookLengthM: number | null
+  flM: number | null
+  plannedQtyM3: number | null
+  actualQtyM3: number | null
 }
 
 export interface ChecklistStepRow {
   checklistPileId: string
+  pileId: string
   pileSeqNo: number
   pileIdCode: string
   pileStatus: PileLifecycle
@@ -89,7 +107,7 @@ export interface ChecklistStepRow {
   pileCrane: MachineSummary
   dimensionDiaMm: number | null
   dimensionDepthM: number | null
-  concreteUsage: ConcreteUsage | null
+  measurements: PileMeasurements | null
   stepId: string
   stepName: string
   track: PilingTrack

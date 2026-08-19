@@ -11,12 +11,14 @@ import SitesPage from '@/modules/piling/features/sites/pages'
 import SiteAppUsersPage from '@/modules/piling/features/sites/pages/site-detail/SiteAppUsersPage'
 import SiteLocationsPage from '@/modules/piling/features/sites/pages/site-detail/SiteLocationsPage'
 import SiteDetailLayout from '@/modules/piling/features/sites/pages/site-detail/SiteDetailLayout'
+import SiteContractorsPage from '@/modules/piling/features/sites/pages/site-detail/SiteContractorsPage'
 import SiteDrawingsPage from '@/modules/piling/features/sites/pages/site-detail/SiteDrawingsPage'
 import SiteMachinesPage from '@/modules/piling/features/sites/pages/site-detail/SiteMachinesPage'
 import SitePersonnelPage from '@/modules/piling/features/sites/pages/site-detail/SitePersonnelPage'
 import SitePilesPage from '@/modules/piling/features/sites/pages/site-detail/SitePilesPage'
 import SitePilingStepsPage from '@/modules/piling/features/sites/pages/site-detail/SitePilingStepsPage'
 import SiteShiftsPage from '@/modules/piling/features/sites/pages/site-detail/SiteShiftsPage'
+import SiteSupportContactsPage from '@/modules/piling/features/sites/pages/site-detail/SiteSupportContactsPage'
 import CompaniesPage from '@/modules/shared/features/companies/pages'
 import UsersPage from '@/modules/shared/features/users/pages'
 import { Layout } from './Layout'
@@ -51,11 +53,17 @@ export const router = createBrowserRouter([
                   { path: 'drawings', element: <SiteDrawingsPage /> },
                   { path: 'personnel', element: <SitePersonnelPage /> },
                   { path: 'machines', element: <SiteMachinesPage /> },
+                  { path: 'contractors', element: <SiteContractorsPage /> },
                   { path: 'shifts', element: <SiteShiftsPage /> },
                   {
                     path: 'app-users',
                     element: <RequireCapability capability="app_users:manage" />,
                     children: [{ index: true, element: <SiteAppUsersPage /> }],
+                  },
+                  {
+                    path: 'help-support',
+                    element: <RequireCapability capability="app_users:manage" />,
+                    children: [{ index: true, element: <SiteSupportContactsPage /> }],
                   },
                 ],
               },

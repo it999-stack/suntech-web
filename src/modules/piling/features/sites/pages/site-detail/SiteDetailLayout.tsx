@@ -11,6 +11,7 @@ const baseSections = [
   { value: 'drawings', label: 'Drawings', path: 'drawings' },
   { value: 'personnel', label: 'Site Personnel', path: 'personnel' },
   { value: 'machines', label: 'Machines', path: 'machines' },
+  { value: 'contractors', label: 'Contractors', path: 'contractors' },
   { value: 'shifts', label: 'Shifts', path: 'shifts' },
 ]
 
@@ -21,7 +22,11 @@ export default function SiteDetailLayout() {
   const canManageAppUsers = useHasCapability('app_users:manage')
 
   const sections = canManageAppUsers
-    ? [...baseSections, { value: 'app-users', label: 'App Users', path: 'app-users' }]
+    ? [
+        ...baseSections,
+        { value: 'app-users', label: 'App Users', path: 'app-users' },
+        { value: 'help-support', label: 'Help & Support', path: 'help-support' },
+      ]
     : baseSections
 
   const activeValue = location.pathname.split('/').pop()
