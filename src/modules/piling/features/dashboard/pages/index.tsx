@@ -1,18 +1,22 @@
-import { AlertTriangleIcon, ClipboardCheckIcon, HardHatIcon, ListChecksIcon } from 'lucide-react'
+import { useState } from 'react'
+import { ClipboardCheckIcon, DrillIcon, ListChecksIcon, TargetIcon } from 'lucide-react'
 import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
 import { KpiRowSkeleton } from '@/components/skeletons/KpiRowSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { DateRangePicker } from '@/components/DateRangePicker'
 import { ActivityFeed } from '@/modules/shared/components/ActivityFeed'
 import { AlertsPanel } from '@/modules/shared/components/AlertsPanel'
-import { SiteProgressChart } from '../components/index/SiteProgressChart'
 import { SiteProgressTable } from '../components/index/SiteProgressTable'
 import { useDashboardActivity, useDashboardAlerts, useDashboardData } from '../hooks/useDashboardQueries'
 import { QuickOverviewCard } from '@/modules/shared/components/QuickOverviewCards'
+import { today } from '@/lib/date'
 
 import overviewBg from '@/assets/overview_bg.png'
 
 export default function PilingDashboardPage() {
-  const dashboardQuery = useDashboardData()
+  const [range, setRange] = useState<{ from: string; to: string }>({ from: today(), to: today() })
+
+  const dashboardQuery = useDashboardData(range.from, range.to)
   const alertsQuery = useDashboardAlerts()
   const activityQuery = useDashboardActivity()
 
@@ -21,6 +25,10 @@ export default function PilingDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
+        <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
+      </div>
+
       {dashboardQuery.isLoading ? (
         <KpiRowSkeleton />
       ) : (
@@ -37,30 +45,28 @@ export default function PilingDashboardPage() {
               icon: <ClipboardCheckIcon className="size-4" />,
             },
             {
-              value: overview?.activeSites ?? '—',
-              label: 'Active sites',
-              icon: <HardHatIcon className="size-4" />,
-            },
-            {
-              value: overview?.pendingResume ?? '—',
-              label: 'Pending resume',
-              icon: <AlertTriangleIcon className="size-4" />,
+              value: overview
+                ? `${overview.targetCompletedPiles} / ${overview.targetPlannedPiles}`
+                : '—',
+              label: "Today's target",
+              icon: <TargetIcon className="size-4" />,
             },
             {
               value: overview
-                ? `${overview.todaysChecklistsSubmitted} / ${overview.todaysChecklistsExpected}`
+                ? `${overview.activeRigs} / ${overview.totalRigs}`
+                : '—',
+              label: 'Active rigs',
+              icon: <DrillIcon className="size-4" />,
+            },
+            {
+              value: overview
+                ? `${overview.checklistsSubmitted} / ${overview.checklistsExpected}`
                 : '—',
               label: "Today's checklists",
               icon: <ListChecksIcon className="size-4" />,
             },
           ]}
         />
-      )}
-
-      {dashboardQuery.isLoading ? (
-        <CardSkeleton lines={6} />
-      ) : (
-        <SiteProgressChart sites={sites} defaultSiteHistory={dashboardQuery.data?.defaultSiteHistory} />
       )}
 
       {dashboardQuery.isLoading ? (

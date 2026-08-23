@@ -49,10 +49,10 @@ export function SiteProgressTable({ sites }: SiteProgressTableProps) {
             <TableHeader>
               <TableRow>
                 <TableHead>Site</TableHead>
+                <TableHead>Client</TableHead>
                 <TableHead>Total Piles</TableHead>
                 <TableHead>Completed</TableHead>
                 <TableHead>In Progress</TableHead>
-                <TableHead>Not Started</TableHead>
                 <TableHead>% Complete</TableHead>
                 <TableHead>Last Checklist</TableHead>
                 <TableHead>Status</TableHead>
@@ -66,10 +66,10 @@ export function SiteProgressTable({ sites }: SiteProgressTableProps) {
                   onClick={() => navigate(`/piling/dashboard/sites/${site.siteId}`)}
                 >
                   <TableCell className="font-medium text-foreground">{site.siteName}</TableCell>
+                  <TableCell>{site.clientName}</TableCell>
                   <TableCell>{site.totalPiles}</TableCell>
                   <TableCell>{site.completedPiles}</TableCell>
                   <TableCell>{site.inProgressPiles}</TableCell>
-                  <TableCell>{site.notStartedPiles}</TableCell>
                   <TableCell className="min-w-36">
                     <ProgressBar
                       value={site.percentComplete}

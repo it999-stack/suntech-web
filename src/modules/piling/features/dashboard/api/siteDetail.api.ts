@@ -3,19 +3,29 @@ import { addMinutesIso, dateOnly, formatAxisDate, formatHourLabel, hourCeil, hou
 import { byNumber } from '@/lib/sort'
 import { groupBy } from '@/lib/collections'
 import type {
+  AreaSummary,
+  AttentionAlert,
   ChecklistDetail,
   ChecklistStatus,
   ChecklistStepRow,
   ContractorSummary,
+  MachineActivityStatus,
   MachineDowntimeWindow,
+  MachinePerformance,
   MachineSummary,
+  MachineTimeline,
+  MachineTimelineBlock,
+  MachineTimelineResponse,
   NonWorkingWindow,
   PileLifecycle,
   PileMeasurements,
+  PileOverviewRow,
   PileProgressRow,
   PilingTrack,
   PlanState,
   RangeChartPoint,
+  SiteDashboardOverview,
+  SiteDashboardStats,
   SiteDetail,
   SitePlanVsActualPoint,
   SiteProgressHistory,
@@ -372,7 +382,7 @@ export function buildSitePlanVsActualTimeline(rows: ChecklistStepRow[], selected
 
 // Slices the site's full (unfiltered) progress history down to the picked
 // date range, for the multi-day range chart — same daily-cumulative points
-// the dashboard-index SiteProgressChart already renders, just bounded.
+// the /piling/sites/{id}/progress-history endpoint returns, just bounded.
 export function buildRangeChartPoints(history: SiteProgressHistory | undefined, from: string, to: string): RangeChartPoint[] {
   const points = history?.points ?? []
   return points
@@ -428,10 +438,234 @@ async function getPileStepsForRange(pileId: string, from: string, to: string): P
   return buildStepRowsForPileDays(data, new Date(), { dedupeByStepId: true })
 }
 
+// ─── Site Dashboard Overview ───────────────────────────────────────────────
+
+interface RawMachinePerformance {
+  machine: RawMachineSummary
+  status: MachineActivityStatus
+  piles_completed: number
+  piles_total: number
+  current_pile_id_code: string | null
+  current_step_name: string | null
+  cycle_time_actual_min: number | null
+  cycle_time_target_min: number | null
+  utilization_pct: number | null
+  delay_min: number
+  start_delay_min: number
+  activity_delay_min: number
+  schedule_adherence_pct: number | null
+  on_time_count: number
+  delayed_count: number
+  next_pile_id_code: string | null
+  next_step_name: string | null
+  next_est_start: string | null
+}
+
+interface RawAreaSummary {
+  area: string
+  piles_completed: number
+  piles_total: number
+  percent_complete: number
+}
+
+interface RawPileOverviewRow {
+  checklist_pile_id: string
+  pile_id: string
+  pile_id_code: string
+  area: string | null
+  rig: RawMachineSummary
+  crane: RawMachineSummary | null
+  completed_steps: number
+  total_steps: number
+  status: StepStatus
+  delay_min: number
+}
+
+interface RawAttentionAlert {
+  id: string
+  severity: AttentionAlert['severity']
+  title: string
+  description: string
+  target_type: AttentionAlert['targetType']
+  target_id: string | null
+}
+
+interface RawSiteDashboardStats {
+  piles_completed: number
+  piles_total: number
+  piles_completed_delta: number | null
+  rig_utilization_pct: number | null
+  rig_utilization_delta_pct: number | null
+  schedule_adherence_pct: number | null
+  on_time_count: number
+  delayed_count: number
+  total_delay_min: number
+  start_delay_min: number
+  activity_delay_min: number
+}
+
+interface RawSiteDashboardOverview {
+  date: string
+  checklist_exists: boolean
+  last_updated: string
+  stats: RawSiteDashboardStats
+  machines: RawMachinePerformance[]
+  areas: RawAreaSummary[]
+  piles: RawPileOverviewRow[]
+  alerts: RawAttentionAlert[]
+}
+
+interface RawMachineTimelineBlock {
+  checklist_pile_id: string
+  pile_id_code: string
+  step_name: string
+  track: PilingTrack
+  planned_start: string
+  planned_end: string | null
+  actual_start: string | null
+  actual_end: string | null
+}
+
+interface RawMachineTimeline {
+  machine: RawMachineSummary
+  blocks: RawMachineTimelineBlock[]
+}
+
+interface RawMachineTimelineResponse {
+  plan_start_time: string | null
+  machines: RawMachineTimeline[]
+}
+
+function mapMachinePerformance(raw: RawMachinePerformance): MachinePerformance {
+  return {
+    machine: mapMachine(raw.machine),
+    status: raw.status,
+    pilesCompleted: raw.piles_completed,
+    pilesTotal: raw.piles_total,
+    currentPileIdCode: raw.current_pile_id_code,
+    currentStepName: raw.current_step_name,
+    cycleTimeActualMin: raw.cycle_time_actual_min,
+    cycleTimeTargetMin: raw.cycle_time_target_min,
+    utilizationPct: raw.utilization_pct,
+    delayMin: raw.delay_min,
+    startDelayMin: raw.start_delay_min,
+    activityDelayMin: raw.activity_delay_min,
+    scheduleAdherencePct: raw.schedule_adherence_pct,
+    onTimeCount: raw.on_time_count,
+    delayedCount: raw.delayed_count,
+    nextPileIdCode: raw.next_pile_id_code,
+    nextStepName: raw.next_step_name,
+    nextEstStart: raw.next_est_start,
+  }
+}
+
+function mapAreaSummary(raw: RawAreaSummary): AreaSummary {
+  return {
+    area: raw.area,
+    pilesCompleted: raw.piles_completed,
+    pilesTotal: raw.piles_total,
+    percentComplete: raw.percent_complete,
+  }
+}
+
+function mapPileOverviewRow(raw: RawPileOverviewRow): PileOverviewRow {
+  return {
+    checklistPileId: raw.checklist_pile_id,
+    pileId: raw.pile_id,
+    pileIdCode: raw.pile_id_code,
+    area: raw.area,
+    rig: mapMachine(raw.rig),
+    crane: raw.crane ? mapMachine(raw.crane) : null,
+    completedSteps: raw.completed_steps,
+    totalSteps: raw.total_steps,
+    status: raw.status,
+    delayMin: raw.delay_min,
+  }
+}
+
+function mapAttentionAlert(raw: RawAttentionAlert): AttentionAlert {
+  return {
+    id: raw.id,
+    severity: raw.severity,
+    title: raw.title,
+    description: raw.description,
+    targetType: raw.target_type,
+    targetId: raw.target_id,
+  }
+}
+
+function mapSiteDashboardStats(raw: RawSiteDashboardStats): SiteDashboardStats {
+  return {
+    pilesCompleted: raw.piles_completed,
+    pilesTotal: raw.piles_total,
+    pilesCompletedDelta: raw.piles_completed_delta,
+    rigUtilizationPct: raw.rig_utilization_pct,
+    rigUtilizationDeltaPct: raw.rig_utilization_delta_pct,
+    scheduleAdherencePct: raw.schedule_adherence_pct,
+    onTimeCount: raw.on_time_count,
+    delayedCount: raw.delayed_count,
+    totalDelayMin: raw.total_delay_min,
+    startDelayMin: raw.start_delay_min,
+    activityDelayMin: raw.activity_delay_min,
+  }
+}
+
+// Lightweight payload for the redesigned single-day Site Detail page — stat
+// tiles, machine (rig/crane) cards, area summary, and a small per-pile
+// rollup (not per-step detail; opening a pile still lazily fetches that via
+// getPileStepsForRange).
+async function getSiteDashboardOverview(siteId: string, date: string): Promise<SiteDashboardOverview> {
+  const { data } = await apiClient.get<RawSiteDashboardOverview>(`/piling/sites/${siteId}/dashboard/overview`, {
+    params: { date },
+  })
+  return {
+    date: data.date,
+    checklistExists: data.checklist_exists,
+    lastUpdated: data.last_updated,
+    stats: mapSiteDashboardStats(data.stats),
+    machines: data.machines.map(mapMachinePerformance),
+    areas: data.areas.map(mapAreaSummary),
+    piles: data.piles.map(mapPileOverviewRow),
+    alerts: data.alerts.map(mapAttentionAlert),
+  }
+}
+
+function mapMachineTimelineBlock(raw: RawMachineTimelineBlock): MachineTimelineBlock {
+  return {
+    checklistPileId: raw.checklist_pile_id,
+    pileIdCode: raw.pile_id_code,
+    stepName: raw.step_name,
+    track: raw.track,
+    plannedStart: raw.planned_start,
+    plannedEnd: raw.planned_end,
+    actualStart: raw.actual_start,
+    actualEnd: raw.actual_end,
+  }
+}
+
+// Separate, deliberately lighter than the overview — no idle/delay math, just
+// plan/actual timestamps grouped by executing rig/crane machine, for the
+// Gantt, plus the checklist's plan_start_time so the axis can anchor there.
+async function getMachineTimeline(siteId: string, date: string): Promise<MachineTimelineResponse> {
+  const { data } = await apiClient.get<RawMachineTimelineResponse>(
+    `/piling/sites/${siteId}/dashboard/machine-timeline`,
+    { params: { date } }
+  )
+  return {
+    planStartTime: data.plan_start_time,
+    machines: data.machines.map((raw) => ({
+      machine: mapMachine(raw.machine),
+      blocks: raw.blocks.map(mapMachineTimelineBlock),
+    })),
+  }
+}
+
 export const siteDetailService = {
   getSite,
   getPlanState,
   getChecklistDetail,
   getPileProgressForRange,
   getPileStepsForRange,
+  getSiteDashboardOverview,
+  getMachineTimeline,
 }

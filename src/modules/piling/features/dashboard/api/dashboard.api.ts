@@ -10,7 +10,7 @@ import type {
 } from '../types/dashboard.types'
 
 export interface DashboardService {
-  getDashboard(): Promise<DashboardData>
+  getDashboard(dateFrom: string, dateTo: string): Promise<DashboardData>
   getSiteProgressHistory(siteId: string): Promise<SiteProgressHistory>
   getAlerts(): Promise<AlertItem[]>
   getRecentActivity(): Promise<ActivityItem[]>
@@ -103,10 +103,10 @@ const MOCK_ACTIVITY: ActivityItem[] = [
 interface RawSiteProgress {
   site_id: string
   site_name: string
+  client_name: string
   total_piles: number
   completed_piles: number
   in_progress_piles: number
-  not_started_piles: number
   percent_complete: number
   last_checklist_label: string
   status: SiteStatus
@@ -134,19 +134,24 @@ interface RawDashboard {
     active_sites: number
     todays_checklists_submitted: number
     todays_checklists_expected: number
+    target_planned_piles: number
+    target_completed_piles: number
+    active_rigs: number
+    total_rigs: number
+    checklists_submitted: number
+    checklists_expected: number
   }
   sites: RawSiteProgress[]
-  default_site_history: RawSiteProgressHistory | null
 }
 
 function mapSiteProgress(raw: RawSiteProgress): SiteProgress {
   return {
     siteId: raw.site_id,
     siteName: raw.site_name,
+    clientName: raw.client_name,
     totalPiles: raw.total_piles,
     completedPiles: raw.completed_piles,
     inProgressPiles: raw.in_progress_piles,
-    notStartedPiles: raw.not_started_piles,
     percentComplete: raw.percent_complete,
     lastChecklistLabel: raw.last_checklist_label,
     status: raw.status,
@@ -167,8 +172,10 @@ function mapSiteProgressHistory(raw: RawSiteProgressHistory): SiteProgressHistor
   }
 }
 
-async function getDashboard(): Promise<DashboardData> {
-  const { data } = await apiClient.get<RawDashboard>('/piling/dashboard')
+async function getDashboard(dateFrom: string, dateTo: string): Promise<DashboardData> {
+  const { data } = await apiClient.get<RawDashboard>('/piling/dashboard', {
+    params: { date_from: dateFrom, date_to: dateTo },
+  })
   const pendingResume = MOCK_ALERTS.filter((a) => a.category === 'pending_resume').length
 
   return {
@@ -181,9 +188,14 @@ async function getDashboard(): Promise<DashboardData> {
       pendingResume,
       todaysChecklistsSubmitted: data.overview.todays_checklists_submitted,
       todaysChecklistsExpected: data.overview.todays_checklists_expected,
+      targetPlannedPiles: data.overview.target_planned_piles,
+      targetCompletedPiles: data.overview.target_completed_piles,
+      activeRigs: data.overview.active_rigs,
+      totalRigs: data.overview.total_rigs,
+      checklistsSubmitted: data.overview.checklists_submitted,
+      checklistsExpected: data.overview.checklists_expected,
     },
     sites: data.sites.map(mapSiteProgress),
-    defaultSiteHistory: data.default_site_history ? mapSiteProgressHistory(data.default_site_history) : null,
   }
 }
 

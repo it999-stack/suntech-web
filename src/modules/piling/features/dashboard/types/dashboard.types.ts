@@ -8,15 +8,22 @@ export interface DashboardOverview {
   pendingResume: number
   todaysChecklistsSubmitted: number
   todaysChecklistsExpected: number
+  // ─── Date-range-scoped KPIs (dashboard-index calendar filter) ────────────
+  targetPlannedPiles: number
+  targetCompletedPiles: number
+  activeRigs: number
+  totalRigs: number
+  checklistsSubmitted: number
+  checklistsExpected: number
 }
 
 export interface SiteProgress {
   siteId: string
   siteName: string
+  clientName: string
   totalPiles: number
   completedPiles: number
   inProgressPiles: number
-  notStartedPiles: number
   percentComplete: number
   lastChecklistLabel: string
   status: SiteStatus
@@ -39,7 +46,6 @@ export interface SiteProgressHistory {
 export interface DashboardData {
   overview: DashboardOverview
   sites: SiteProgress[]
-  defaultSiteHistory: SiteProgressHistory | null
 }
 
 // ─── Site detail / plan-vs-actual (SiteDetailPage) ────────────────────────────
@@ -182,11 +188,125 @@ export interface SitePlanVsActualPoint {
 }
 
 // One point per day within a picked date range — feeds the site-detail
-// multi-day range chart, sourced from the same daily-cumulative history as
-// the dashboard-index SiteProgressChart.
+// multi-day range chart (SiteProgressRangeChart), sourced from the same
+// daily-cumulative history endpoint used by the dashboard index page.
 export interface RangeChartPoint {
   date: string
   label: string
   actual: number | null
   planned: number | null
+}
+
+// ─── Site Dashboard Overview (redesigned single-day Site Detail page) ─────────
+
+// Mirrors core.models.piling.PilingMachineStatus — kept separate from
+// machines/types/machines.types.ts's MachineStatus (which is missing IDLE)
+// rather than widening that shared type for a use case it doesn't need yet.
+export type MachineActivityStatus = 'ACTIVE' | 'INACTIVE' | 'BREAKDOWN' | 'IDLE'
+
+export interface MachinePerformance {
+  machine: MachineSummary
+  status: MachineActivityStatus
+  pilesCompleted: number
+  pilesTotal: number
+  currentPileIdCode: string | null
+  currentStepName: string | null
+  cycleTimeActualMin: number | null
+  cycleTimeTargetMin: number | null
+  utilizationPct: number | null
+  delayMin: number
+  startDelayMin: number
+  activityDelayMin: number
+  scheduleAdherencePct: number | null
+  onTimeCount: number
+  delayedCount: number
+  nextPileIdCode: string | null
+  nextStepName: string | null
+  nextEstStart: string | null
+}
+
+export interface AreaSummary {
+  area: string
+  pilesCompleted: number
+  pilesTotal: number
+  percentComplete: number
+}
+
+// A lightweight per-pile rollup for the Piles Overview table — not per-step
+// detail. Opening a row still lazily fetches full ChecklistStepRow[] via
+// usePileStepsForRange, same as the range table already does.
+export interface PileOverviewRow {
+  checklistPileId: string
+  pileId: string
+  pileIdCode: string
+  area: string | null
+  rig: MachineSummary
+  crane: MachineSummary | null
+  completedSteps: number
+  totalSteps: number
+  status: StepStatus
+  delayMin: number
+}
+
+export type AttentionAlertSeverity = 'info' | 'warning' | 'critical'
+export type AttentionAlertTargetType = 'machine' | 'pile'
+
+export interface AttentionAlert {
+  id: string
+  severity: AttentionAlertSeverity
+  title: string
+  description: string
+  targetType: AttentionAlertTargetType
+  targetId: string | null
+}
+
+export interface SiteDashboardStats {
+  pilesCompleted: number
+  pilesTotal: number
+  pilesCompletedDelta: number | null
+  rigUtilizationPct: number | null
+  rigUtilizationDeltaPct: number | null
+  scheduleAdherencePct: number | null
+  onTimeCount: number
+  delayedCount: number
+  totalDelayMin: number
+  startDelayMin: number
+  activityDelayMin: number
+}
+
+export interface SiteDashboardOverview {
+  date: string
+  checklistExists: boolean
+  lastUpdated: string
+  stats: SiteDashboardStats
+  machines: MachinePerformance[]
+  areas: AreaSummary[]
+  piles: PileOverviewRow[]
+  alerts: AttentionAlert[]
+}
+
+// ─── Machine Activity Timeline — own endpoint, lighter than the overview ──────
+
+export interface MachineTimelineBlock {
+  checklistPileId: string
+  pileIdCode: string
+  stepName: string
+  track: PilingTrack
+  plannedStart: string
+  plannedEnd: string | null
+  actualStart: string | null
+  actualEnd: string | null
+}
+
+export interface MachineTimeline {
+  machine: MachineSummary
+  blocks: MachineTimelineBlock[]
+}
+
+export interface MachineTimelineResponse {
+  // The checklist's declared shift start (e.g. 8 AM) — the Gantt axis
+  // anchors here so time before a machine's first step still renders as
+  // Idle. Null only when no checklist exists for the date.
+  planStartTime: string | null
+  machines: MachineTimeline[]
 }

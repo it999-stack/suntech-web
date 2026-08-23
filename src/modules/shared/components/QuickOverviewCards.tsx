@@ -66,7 +66,12 @@ export function QuickOverviewCard({
         <CardDescription className="mt-1">{description}</CardDescription>
       </div>
 
-      <div className="relative grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div
+        className={cn(
+          'relative grid grid-cols-2 gap-3',
+          items.length >= 5 ? 'md:grid-cols-3 xl:grid-cols-5' : 'md:grid-cols-4'
+        )}
+      >
         {items.map((item) => (
           <KpiCard
             key={item.label}

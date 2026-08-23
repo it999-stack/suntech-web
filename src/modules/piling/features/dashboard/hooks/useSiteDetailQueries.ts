@@ -11,6 +11,10 @@ export const siteDetailQueryKeys = {
     ['piling-site-detail', 'pile-progress-range', siteId, from, to] as const,
   pileStepsRange: (pileId: string, from: string, to: string) =>
     ['piling-site-detail', 'pile-steps-range', pileId, from, to] as const,
+  dashboardOverview: (siteId: string, date: string) =>
+    ['piling-site-detail', 'dashboard-overview', siteId, date] as const,
+  machineTimeline: (siteId: string, date: string) =>
+    ['piling-site-detail', 'machine-timeline', siteId, date] as const,
 }
 
 export function useSite(siteId: string | undefined) {
@@ -64,5 +68,27 @@ export function usePileStepsForRange(pileId: string | undefined, from: string, t
     queryKey: siteDetailQueryKeys.pileStepsRange(pileId ?? '', from, to),
     queryFn: () => siteDetailService.getPileStepsForRange(pileId as string, from, to),
     enabled: !!pileId && enabled,
+  })
+}
+
+// Drives the redesigned single-day page: stat tiles, machine (rig/crane)
+// cards, area summary, and the piles overview table's rows. Deliberately
+// excludes the Gantt timeline (see useMachineTimeline) and per-step detail
+// (see usePileStepsForRange, fetched lazily only once a pile is opened).
+export function useSiteDashboardOverview(siteId: string | undefined, date: string) {
+  return useQuery({
+    queryKey: siteDetailQueryKeys.dashboardOverview(siteId ?? '', date),
+    queryFn: () => siteDetailService.getSiteDashboardOverview(siteId as string, date),
+    enabled: !!siteId,
+  })
+}
+
+// Own query so the Gantt's data doesn't block the overview's initial paint —
+// no idle/delay math on the backend, just plan/actual timestamps per machine.
+export function useMachineTimeline(siteId: string | undefined, date: string) {
+  return useQuery({
+    queryKey: siteDetailQueryKeys.machineTimeline(siteId ?? '', date),
+    queryFn: () => siteDetailService.getMachineTimeline(siteId as string, date),
+    enabled: !!siteId,
   })
 }
