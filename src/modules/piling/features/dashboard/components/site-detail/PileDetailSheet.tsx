@@ -41,6 +41,7 @@ interface PileDetailSheetProps {
   downtimeWindows?: MachineDowntimeWindow[]
   nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
+  previousRowByStepKey?: Map<string, ChecklistStepRow | null>
   // Fired after the measurements edit dialog saves successfully — caller
   // invalidates whichever query actually backs `rows` (range-steps query for
   // the range table, whole-checklist query for the single-day table).
@@ -105,6 +106,7 @@ export function PileDetailSheet({
   downtimeWindows,
   nonWorkingWindows,
   planStartTime,
+  previousRowByStepKey,
   onMeasurementsSaved,
 }: PileDetailSheetProps) {
   const [measurementsOpen, setMeasurementsOpen] = useState(false)
@@ -179,6 +181,7 @@ export function PileDetailSheet({
               downtimeWindows={downtimeWindows}
               nonWorkingWindows={nonWorkingWindows}
               planStartTime={planStartTime}
+              previousRowByStepKey={previousRowByStepKey}
             />
 
             <Collapsible

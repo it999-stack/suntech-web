@@ -122,7 +122,7 @@ interface RawChecklistPile {
   status: PileLifecycle
   pile: RawPileSummary
   rig: RawMachineSummary
-  crane: RawMachineSummary
+  crane: RawMachineSummary | null
   plan_steps: RawPlanStep[]
   actual_steps: RawActualStep[]
   measurements: RawPileMeasurements | null
@@ -194,7 +194,7 @@ function mapNonWorkingWindow(raw: RawNonWorkingWindow): NonWorkingWindow {
 // compressor assignment, so they render no actual machine.
 function resolveActualMachine(pile: RawChecklistPile, track: PilingTrack): MachineSummary | null {
   if (track === 'RIG') return mapMachine(pile.rig)
-  if (track === 'CRANE') return mapMachine(pile.crane)
+  if (track === 'CRANE') return pile.crane ? mapMachine(pile.crane) : null
   return null
 }
 
@@ -257,7 +257,7 @@ function buildStepRowsForPileDays(pileDays: RawChecklistPile[], now: Date, optio
         pileStatus: pile.status,
         area: pile.pile.area,
         pileRig: mapMachine(pile.rig),
-        pileCrane: mapMachine(pile.crane),
+        pileCrane: pile.crane ? mapMachine(pile.crane) : null,
         dimensionDiaMm: pile.pile.dimension?.dia ?? null,
         dimensionDepthM: pile.pile.dimension?.depth ?? null,
         measurements: mapMeasurements(pile.measurements),

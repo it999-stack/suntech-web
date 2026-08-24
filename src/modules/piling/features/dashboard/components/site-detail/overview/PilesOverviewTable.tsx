@@ -26,11 +26,18 @@ import { Pagination } from '@/components/Pagination'
 import { today } from '@/lib/date'
 import { cn } from '@/lib/utils'
 import { siteDetailService } from '../../../api/siteDetail.api'
-import { PILE_HISTORY_FROM, siteDetailQueryKeys, usePileStepsForRange } from '../../../hooks/useSiteDetailQueries'
+import {
+  PILE_HISTORY_FROM,
+  siteDetailQueryKeys,
+  useChecklistDetail,
+  usePileStepsForRange,
+  usePlanState,
+} from '../../../hooks/useSiteDetailQueries'
 import type { PileOverviewRow, StepStatus } from '../../../types/dashboard.types'
 import { EditPileActualDrawer } from '../EditPileActualDrawer'
 import { PileDetailSheet } from '../PileDetailSheet'
 import { StatusPill } from '../status/StatusPill'
+import { buildMachineChainPreviousRowMap } from '../lib/timelineMath'
 import { formatSignedDuration } from './lib/format'
 
 interface PilesOverviewTableProps {
@@ -92,6 +99,19 @@ export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOv
   const editPile = piles.find((row) => row.pileId === editPileId) ?? null
   const selectedStepsQuery = usePileStepsForRange(selectedPileId ?? undefined, PILE_HISTORY_FROM, histTo, !!selectedPileId)
   const editStepsQuery = usePileStepsForRange(editPileId ?? undefined, PILE_HISTORY_FROM, histTo, !!editPileId)
+
+  // The drawer's per-step "start ±N min" badges need every pile's rows for
+  // this date to chain a machine's delay across pile boundaries (see
+  // buildMachineChainPreviousRowMap / DELAY_CALCULATIONS.md) — the
+  // pile-scoped selectedStepsQuery above can't do that on its own. This is
+  // the same whole-checklist data StepStatusTable used to hold; fetched
+  // here instead since it's the current, actually-used call site.
+  const planStateQuery = usePlanState(siteId, date)
+  const checklistDetailQuery = useChecklistDetail(planStateQuery.data?.checklistId)
+  const previousRowByStepKey = useMemo(
+    () => (checklistDetailQuery.data ? buildMachineChainPreviousRowMap(checklistDetailQuery.data.rows) : undefined),
+    [checklistDetailQuery.data]
+  )
 
   function invalidateThisPile(pileId: string) {
     queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.pileStepsRange(pileId, PILE_HISTORY_FROM, histTo) })
@@ -251,6 +271,10 @@ export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOv
             selectedDate={date}
             open={!!selectedPileId}
             onOpenChange={(open) => !open && setSelectedPileId(null)}
+            downtimeWindows={checklistDetailQuery.data?.downtimeWindows}
+            nonWorkingWindows={checklistDetailQuery.data?.nonWorkingWindows}
+            planStartTime={checklistDetailQuery.data?.planStartTime}
+            previousRowByStepKey={previousRowByStepKey}
             onMeasurementsSaved={() => invalidateThisPile(selectedPile.pileId)}
           />
         ) : (

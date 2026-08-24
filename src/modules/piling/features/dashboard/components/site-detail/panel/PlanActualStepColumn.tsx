@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { formatDuration, formatTimeRangeWithDay, minutesBetween } from '@/lib/date'
 import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
-import { computeActivityDelay, computeStartDelay, formatDelta, stepWorkStart } from '../lib/timelineMath'
+import { computeActivityDelay, computeStartDelay, formatDelta, rowChainKey, stepWorkStart } from '../lib/timelineMath'
 
 export interface StepCell {
   gridRow: number
@@ -28,6 +28,12 @@ interface PlanActualStepColumnProps {
   downtimeWindows?: MachineDowntimeWindow[]
   nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
+  // When provided (built from a whole day's checklist via
+  // buildMachineChainPreviousRowMap), delay badges use the true per-machine,
+  // cross-pile chain instead of falling back to this pile's own previous
+  // row — see "Known gap: per-card badges in the single-pile drawer" in
+  // DELAY_CALCULATIONS.md.
+  previousRowByStepKey?: Map<string, ChecklistStepRow | null>
 }
 
 // Planned is always this fixed blue theme, regardless of a step's real
@@ -54,6 +60,7 @@ export function PlanActualStepColumn({
   downtimeWindows = [],
   nonWorkingWindows = [],
   planStartTime = null,
+  previousRowByStepKey,
 }: PlanActualStepColumnProps) {
   return (
     <>
@@ -65,9 +72,16 @@ export function PlanActualStepColumn({
         const end = mode === 'planned' ? row.plannedEnd : row.actualEnd
 
         // Delay only makes sense on the actual column — planned has nothing to compare against.
-        // `cells` is always one pile's rows in sequence order, so the previous cell is this
-        // step's actual predecessor.
-        const previousRow = index > 0 ? cells[index - 1].row : null
+        // `cells` is always one pile's rows in sequence order, so the previous cell is only
+        // this step's actual predecessor when nothing better is available. When the caller
+        // supplies previousRowByStepKey (built across every pile for the day), prefer the true
+        // per-machine chain — that's the only thing that can correctly anchor a pile's first
+        // step, which may chain off a different pile's last step on the same machine.
+        const previousRow = previousRowByStepKey
+          ? (previousRowByStepKey.get(rowChainKey(row)) ?? null)
+          : index > 0
+            ? cells[index - 1].row
+            : null
         const startDeltaMinutes = mode === 'actual' ? computeStartDelay(row, previousRow, planStartTime) : null
         const activityDeltaMinutes =
           mode === 'actual' ? computeActivityDelay(row, downtimeWindows, nonWorkingWindows, new Date()) : null

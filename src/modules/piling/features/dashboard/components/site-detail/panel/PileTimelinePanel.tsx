@@ -15,6 +15,7 @@ interface PileTimelinePanelProps {
   downtimeWindows?: MachineDowntimeWindow[]
   nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
+  previousRowByStepKey?: Map<string, ChecklistStepRow | null>
 }
 
 function isToday(dateStr: string): boolean {
@@ -93,6 +94,7 @@ export function PileTimelinePanel({
   downtimeWindows = [],
   nonWorkingWindows = [],
   planStartTime = null,
+  previousRowByStepKey,
 }: PileTimelinePanelProps) {
   const sortedRows = useMemo(() => [...rows].sort(byNumber((row) => row.sequenceOrder)), [rows])
 
@@ -187,6 +189,7 @@ export function PileTimelinePanel({
             downtimeWindows={downtimeWindows}
             nonWorkingWindows={nonWorkingWindows}
             planStartTime={planStartTime}
+            previousRowByStepKey={previousRowByStepKey}
           />
           <MachineRail cells={actualMachineCells} column={COLUMNS.actualMachines} side="left" />
         </div>

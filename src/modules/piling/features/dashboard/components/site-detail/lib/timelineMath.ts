@@ -222,11 +222,56 @@ export interface DelayTotals {
 // Which machine a row's step actually ran on: its own assigned machine, or
 // (for the rare unassigned case) the pile's rig/crane by track — mirrors the
 // fallback report_service.py uses when building delay-report rows.
-function rowMachineId(row: ChecklistStepRow): string | null {
+export function rowMachineId(row: ChecklistStepRow): string | null {
   if (row.plannedMachine) return row.plannedMachine.id
   if (row.track === 'RIG') return row.pileRig.id
-  if (row.track === 'CRANE') return row.pileCrane.id
+  if (row.track === 'CRANE') return row.pileCrane?.id ?? null
   return null
+}
+
+// Row identity within one day's checklist. `stepId` alone is NOT unique
+// there — it's a catalog/template step id shared across every pile that
+// includes it (see the dedupeByStepId comment in siteDetail.api.ts), so it
+// must be paired with checklistPileId to identify one specific row.
+export function rowChainKey(row: ChecklistStepRow): string {
+  return `${row.checklistPileId}::${row.stepId}`
+}
+
+/**
+ * Maps every row (by rowChainKey) to the row immediately before it in its
+ * own machine's real chronological chain that day — the same per-machine,
+ * cross-pile grouping computeDelayTotals() uses (see "Chain scope: per
+ * machine, not per pile" in DELAY_CALCULATIONS.md) — or `null` if it's that
+ * machine's first step of the day.
+ *
+ * `rows` must be every pile's rows for one site+date (e.g.
+ * ChecklistDetail.rows from getChecklistDetail) — a single pile's own rows
+ * aren't enough, since a pile's first step can chain off a different pile's
+ * last step on the same machine. Unlike computeDelayTotals()'s totals,
+ * every row is included here (not just completed ones) — a not-yet-finished
+ * previous step is still a valid anchor via resolvePlannedEnd() inside
+ * expectedStepStart().
+ */
+export function buildMachineChainPreviousRowMap(rows: ChecklistStepRow[]): Map<string, ChecklistStepRow | null> {
+  const byMachine = new Map<string, ChecklistStepRow[]>()
+  for (const row of rows) {
+    const machineId = rowMachineId(row)
+    if (machineId === null) continue
+    const list = byMachine.get(machineId)
+    if (list) list.push(row)
+    else byMachine.set(machineId, [row])
+  }
+
+  const map = new Map<string, ChecklistStepRow | null>()
+  for (const machineRows of byMachine.values()) {
+    const sorted = [...machineRows].sort(
+      byNumber((row) => (row.plannedStart ? new Date(row.plannedStart).getTime() : 0), (row) => row.sequenceOrder)
+    )
+    sorted.forEach((row, index) => {
+      map.set(rowChainKey(row), index > 0 ? sorted[index - 1] : null)
+    })
+  }
+  return map
 }
 
 export function computeDelayTotals(

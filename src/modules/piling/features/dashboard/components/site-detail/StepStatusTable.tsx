@@ -110,7 +110,7 @@ function groupByPile(rows: ChecklistStepRow[]): PileGroup[] {
         pileIdCode: first.pileIdCode,
         area: first.area,
         rig: first.pileRig.machineNo,
-        crane: first.pileCrane.machineNo,
+        crane: first.pileCrane?.machineNo ?? '—',
         status: derivePileStatus(pileRows),
         completedCount: pileRows.filter((r) => r.status === 'completed').length,
         updatedAt: latestActivity(pileRows),

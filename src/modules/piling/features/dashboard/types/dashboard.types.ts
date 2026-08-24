@@ -110,7 +110,7 @@ export interface ChecklistStepRow {
   pileStatus: PileLifecycle
   area: string | null
   pileRig: MachineSummary
-  pileCrane: MachineSummary
+  pileCrane: MachineSummary | null
   dimensionDiaMm: number | null
   dimensionDepthM: number | null
   measurements: PileMeasurements | null

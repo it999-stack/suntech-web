@@ -139,17 +139,31 @@ in this file — the web dashboard doesn't currently render a live idle-time
 view. See the suntech-core companion doc for the full rule if this ever needs
 a client-side counterpart.
 
-## Known gap: per-card badges in the single-pile drawer
+## Per-card badges in the single-pile drawer
 
 `computeDelayTotals()` (used for the delay summary card and the pile-detail
 drawer's header totals) uses the per-machine chain described above.
-`PlanActualStepColumn.tsx`'s per-step "start +N min" badge does **not** — it calls
-`computeStartDelay()` directly with `previousRow = cells[index - 1]`, where `cells`
-is deliberately scoped to one pile's own rows (see the comment at that call site).
-That component only ever sees one pile, so a pile's first-step badge there can
-still show a different number than the correct cascaded figure shown in the
-totals directly above it in the same drawer. Fixing this requires passing a
-precomputed per-machine "previous row" map down from `SiteDetailPage` (which has
-every pile's rows) through `PileDetailSheet` → `PileTimelinePanel` →
-`PlanActualStepColumn`. Not yet done — flagged here so it isn't mistaken for
-correct behavior.
+`PlanActualStepColumn.tsx`'s per-step "start +N min" badge can use the same
+chain, via an optional `previousRowByStepKey` map (built by
+`buildMachineChainPreviousRowMap()`) threaded down through `PileDetailSheet`
+→ `PileTimelinePanel` → `PlanActualStepColumn`. When that map is supplied,
+each row looks up its true machine-chain predecessor (`rowChainKey(row)` —
+`stepId` alone isn't unique across piles within one day's checklist, see
+`dedupeByStepId` in `siteDetail.api.ts`) instead of falling back to
+`cells[index - 1]`, which is scoped to one pile's own rows and can't see
+what a machine was doing on a *different* pile just before.
+
+**Wired up in the Overview (single-day) drawer** — `PilesOverviewTable.tsx`
+fetches that date's whole checklist (`usePlanState` → `checklistId` →
+`useChecklistDetail`) purely to build this map, since it already has
+everything needed (every pile's rows for that one date) without any backend
+change.
+
+**Not wired up in the Range (date-range) drawer** — `RangePileTable.tsx`
+still calls `PlanActualStepColumn` without `previousRowByStepKey`, so it
+falls back to the pile-local `cells[index - 1]` approximation described
+above. A date range can span many separate daily checklists, so a correct
+fix there means fetching each date's checklist in range, not just one —
+not yet done. A pile's first-step badge in that view can still show a
+different number than the correct cascaded figure shown in the totals
+directly above it in the same drawer.
