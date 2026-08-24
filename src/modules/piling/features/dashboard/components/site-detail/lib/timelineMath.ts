@@ -2,7 +2,7 @@ import { differenceInMinutes } from 'date-fns'
 import { addMinutesIso, toLocalIsoString } from '@/lib/date'
 import { byNumber } from '@/lib/sort'
 import { resolvePlannedEnd } from '../../../api/siteDetail.api'
-import type { ChecklistStepRow, MachineDowntimeWindow, MachineSummary, NonWorkingWindow } from '../../../types/dashboard.types'
+import type { ChecklistStepRow, MachineSummary } from '../../../types/dashboard.types'
 import type { TimelineNodeKind } from '../status/stepStatusVisuals'
 
 // The buffer occupies the last `bufferMinutes` of a step's own planned
@@ -164,48 +164,22 @@ export function computeStartDelay(
   return differenceInMinutes(new Date(row.actualStart), new Date(expectedStart))
 }
 
-// Sum of every window's overlap with [rangeStart, rangeEnd] — a window still
-// open (`end: null`) is treated as ongoing through rangeEnd (i.e. still down
-// "now" when rangeEnd is now). Structurally typed so it accepts both
-// MachineDowntimeWindow (end may be null, still open) and NonWorkingWindow
-// (end always resolved) without needing a union import.
-function sumOverlapMinutes(windows: { start: string; end: string | null }[], rangeStart: Date, rangeEnd: Date): number {
-  return windows.reduce((sum, w) => {
-    const windowStart = new Date(w.start)
-    const windowEnd = w.end ? new Date(w.end) : rangeEnd
-    const overlapStart = windowStart > rangeStart ? windowStart : rangeStart
-    const overlapEnd = windowEnd < rangeEnd ? windowEnd : rangeEnd
-    return sum + Math.max(0, differenceInMinutes(overlapEnd, overlapStart))
-  }, 0)
-}
-
 /**
- * Positive = net working time (actual span minus any downtime on this step's
- * track, and minus any non-working/shift-change window the span crossed)
- * ran longer than planned. Negative = finished faster. Null = no actual
- * start yet, or the step has no planned duration to compare against. No
- * actual end yet -> live estimate using `now` in its place.
+ * Positive = the step's actual span ran longer than its full planned window
+ * (duration + buffer). Negative = finished faster. Null = no actual start
+ * yet, or the step has no planned duration to compare against. No actual
+ * end yet -> live estimate using `now` in its place.
  *
- * Non-working windows (e.g. a fixed lunch/shift-change break) aren't
- * track-scoped the way machine downtime is — a scheduled break stops
- * everyone, not just one machine — so they're netted out unconditionally,
- * with no `row.track` filter.
+ * Compares the raw actual span directly against duration + buffer — no
+ * netting of machine downtime or non-working windows. Any such time now
+ * simply counts for or against the step like any other elapsed time.
  */
-export function computeActivityDelay(
-  row: ChecklistStepRow,
-  downtimeWindows: MachineDowntimeWindow[],
-  nonWorkingWindows: NonWorkingWindow[],
-  now: Date
-): number | null {
+export function computeActivityDelay(row: ChecklistStepRow, now: Date): number | null {
   if (!row.actualStart || row.durationMinutes == null) return null
   const start = new Date(row.actualStart)
   const end = row.actualEnd ? new Date(row.actualEnd) : now
   const grossMinutes = differenceInMinutes(end, start)
-  const nettedMinutes =
-    sumOverlapMinutes(downtimeWindows.filter((w) => w.track === row.track), start, end) +
-    sumOverlapMinutes(nonWorkingWindows, start, end)
-  const netMinutes = Math.max(0, grossMinutes - nettedMinutes)
-  return netMinutes - row.durationMinutes
+  return grossMinutes - (row.durationMinutes + (row.bufferMinutes ?? 0))
 }
 
 export function formatDelta(minutes: number | null): string | null {
@@ -274,13 +248,7 @@ export function buildMachineChainPreviousRowMap(rows: ChecklistStepRow[]): Map<s
   return map
 }
 
-export function computeDelayTotals(
-  rows: ChecklistStepRow[],
-  downtimeWindows: MachineDowntimeWindow[],
-  nonWorkingWindows: NonWorkingWindow[],
-  planStartTime: string | null,
-  now: Date
-): DelayTotals {
+export function computeDelayTotals(rows: ChecklistStepRow[], planStartTime: string | null, now: Date): DelayTotals {
   const completedRows = rows.filter((row) => row.actualStart && row.actualEnd)
 
   const byMachine = new Map<string, ChecklistStepRow[]>()
@@ -312,7 +280,7 @@ export function computeDelayTotals(
   }
 
   for (const row of completedRows) {
-    const activityDelta = computeActivityDelay(row, downtimeWindows, nonWorkingWindows, now)
+    const activityDelta = computeActivityDelay(row, now)
     if (activityDelta !== null) {
       totalActivity += activityDelta
       activityCount++

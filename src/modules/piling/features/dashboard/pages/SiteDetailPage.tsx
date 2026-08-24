@@ -11,7 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
 import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { DateRangePicker } from '@/components/DateRangePicker'
@@ -21,6 +20,7 @@ import { dateOnly, formatTime, today } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errors'
 import { useSiteMachines } from '@/modules/piling/features/machines/hooks/useMachines'
 import { AttentionRequiredPanel } from '../components/site-detail/overview/AttentionRequiredPanel'
+import { MachineMultiSelectFilter } from '../components/site-detail/MachineMultiSelectFilter'
 import { PilesOverviewTable } from '../components/site-detail/overview/PilesOverviewTable'
 import { MachineActivityTimeline } from '../components/site-detail/overview/MachineActivityTimeline'
 import { MachinePerformanceSection } from '../components/site-detail/overview/MachinePerformanceSection'
@@ -40,14 +40,14 @@ import {
   useSiteProgressHistory,
 } from '../hooks/useSiteDetailQueries'
 
-const ALL = 'all'
-
 export default function SiteDetailPage() {
   const { siteId } = useParams<{ siteId: string }>()
   const queryClient = useQueryClient()
   const [range, setRange] = useState<{ from: string; to: string }>({ from: today(), to: today() })
   const [exportingType, setExportingType] = useState<'delay' | 'boring' | null>(null)
-  const [machineFilter, setMachineFilter] = useState<string>(ALL)
+  // Empty array = "All Machines" (no filter) — mirrors the ALL sentinel the
+  // single-select version used.
+  const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([])
   const [focusPileId, setFocusPileId] = useState<string | null>(null)
   const isSingleDay = range.from === range.to
 
@@ -79,58 +79,78 @@ export default function SiteDetailPage() {
     () => (machinesQuery.data ?? []).filter((m) => m.type === 'RIG' || m.type === 'CRANE'),
     [machinesQuery.data]
   )
-  const machineFilterItems = useMemo(
-    () => [
-      { value: ALL, label: 'All Machines' },
-      ...machineOptions.map((m) => ({ value: m.id, label: m.machineNo })),
-    ],
+  const machineFilterOptions = useMemo(
+    () => machineOptions.map((m) => ({ value: m.id, label: m.machineNo })),
     [machineOptions]
   )
   const overview = overviewQuery.data
   const filteredMachines = useMemo(
-    () => (overview ? overview.machines.filter((m) => machineFilter === ALL || m.machine.id === machineFilter) : []),
-    [overview, machineFilter]
+    () =>
+      overview
+        ? overview.machines.filter((m) => selectedMachineIds.length === 0 || selectedMachineIds.includes(m.machine.id))
+        : [],
+    [overview, selectedMachineIds]
   )
   const filteredTimelines = useMemo(
     () =>
       (machineTimelineQuery.data?.machines ?? []).filter(
-        (t) => machineFilter === ALL || t.machine.id === machineFilter
+        (t) => selectedMachineIds.length === 0 || selectedMachineIds.includes(t.machine.id)
       ),
-    [machineTimelineQuery.data, machineFilter]
+    [machineTimelineQuery.data, selectedMachineIds]
   )
   const filteredPiles = useMemo(
     () =>
       overview
         ? overview.piles.filter(
-            (p) => machineFilter === ALL || p.rig.id === machineFilter || p.crane?.id === machineFilter
+            (p) =>
+              selectedMachineIds.length === 0 ||
+              selectedMachineIds.includes(p.rig.id) ||
+              (p.crane && selectedMachineIds.includes(p.crane.id))
           )
         : [],
-    [overview, machineFilter]
+    [overview, selectedMachineIds]
   )
 
-  // Site-wide stats when no machine is selected, or the single selected
-  // machine's own numbers otherwise — keeps the KPI row in sync with the
-  // machine filter.
+  // Site-wide stats when no machine is selected, or the selected machines'
+  // combined numbers otherwise (sums for count/delay figures, averages for
+  // percentages) — keeps the KPI row in sync with the machine filter. With
+  // exactly one machine selected this reduces to that machine's own numbers,
+  // same as the old single-select behavior.
   const statRowData = useMemo(() => {
-    if (machineFilter === ALL) return overview?.stats ?? null
-    const machine = filteredMachines[0]
-    if (!machine) return null
+    if (selectedMachineIds.length === 0) return overview?.stats ?? null
+    if (filteredMachines.length === 0) return null
+    const utilizationValues = filteredMachines.map((m) => m.utilizationPct).filter((v): v is number => v != null)
+    const adherenceValues = filteredMachines.map((m) => m.scheduleAdherencePct).filter((v): v is number => v != null)
+    const average = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null)
     return {
-      pilesCompleted: machine.pilesCompleted,
-      pilesTotal: machine.pilesTotal,
-      activityDelayMin: machine.activityDelayMin,
-      startDelayMin: machine.startDelayMin,
-      rigUtilizationPct: machine.utilizationPct,
-      scheduleAdherencePct: machine.scheduleAdherencePct,
+      pilesCompleted: filteredMachines.reduce((sum, m) => sum + m.pilesCompleted, 0),
+      pilesTotal: filteredMachines.reduce((sum, m) => sum + m.pilesTotal, 0),
+      activityDelayMin: filteredMachines.reduce((sum, m) => sum + m.activityDelayMin, 0),
+      startDelayMin: filteredMachines.reduce((sum, m) => sum + m.startDelayMin, 0),
+      rigUtilizationPct: average(utilizationValues),
+      scheduleAdherencePct: average(adherenceValues),
     }
-  }, [overview, machineFilter, filteredMachines])
+  }, [overview, selectedMachineIds, filteredMachines])
 
-  const selectedMachineLabel =
-    machineFilter === ALL ? null : machineFilterItems.find((i) => i.value === machineFilter)?.label
-  const statRowTitle = selectedMachineLabel ? `${selectedMachineLabel} overview` : 'Site overview'
-  const statRowDescription = selectedMachineLabel
-    ? `Live performance for ${selectedMachineLabel} on the selected date`
-    : 'Live performance across all rigs and cranes on the selected date'
+  const selectedMachineLabels = useMemo(
+    () =>
+      selectedMachineIds
+        .map((id) => machineFilterOptions.find((i) => i.value === id)?.label)
+        .filter((label): label is string => !!label),
+    [selectedMachineIds, machineFilterOptions]
+  )
+  const statRowTitle =
+    selectedMachineLabels.length === 0
+      ? 'Site overview'
+      : selectedMachineLabels.length === 1
+        ? `${selectedMachineLabels[0]} overview`
+        : `${selectedMachineLabels.length} machines overview`
+  const statRowDescription =
+    selectedMachineLabels.length === 0
+      ? 'Live performance across all rigs and cranes on the selected date'
+      : selectedMachineLabels.length === 1
+        ? `Live performance for ${selectedMachineLabels[0]} on the selected date`
+        : `Live performance for ${selectedMachineLabels.length} selected machines on the selected date`
 
   const site = siteQuery.data
 
@@ -244,20 +264,11 @@ export default function SiteDetailPage() {
       {isSingleDay && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Select value={machineFilter} onValueChange={(v) => setMachineFilter(v ?? ALL)} items={machineFilterItems}>
-              <SelectTrigger size="sm" className="w-40">
-                <SelectValue placeholder="All Machines" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {machineFilterItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <MachineMultiSelectFilter
+              options={machineFilterOptions}
+              selected={selectedMachineIds}
+              onApply={setSelectedMachineIds}
+            />
           </div>
           {overview && (
             <button
@@ -311,7 +322,7 @@ export default function SiteDetailPage() {
             referenceNow={referenceNow}
             planStartTime={machineTimelineQuery.data?.planStartTime ?? null}
             isLoading={machineTimelineQuery.isLoading}
-            resetKey={`${range.from}:${machineFilter}`}
+            resetKey={`${range.from}:${selectedMachineIds.join(',')}`}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="lg:col-span-1">

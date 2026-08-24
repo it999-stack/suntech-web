@@ -31,7 +31,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { formatTime } from '@/lib/date'
 import { groupBy } from '@/lib/collections'
 import { byNumber } from '@/lib/sort'
-import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow, StepStatus } from '../../types/dashboard.types'
+import type { ChecklistStepRow, StepStatus } from '../../types/dashboard.types'
 import { siteDetailQueryKeys } from '../../hooks/useSiteDetailQueries'
 import { EditPileActualDrawer } from './EditPileActualDrawer'
 import { PileDetailSheet } from './PileDetailSheet'
@@ -42,8 +42,6 @@ interface StepStatusTableProps {
   siteId: string
   selectedDate: string
   checklistId: string
-  downtimeWindows?: MachineDowntimeWindow[]
-  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
 }
 
@@ -144,8 +142,6 @@ export function StepStatusTable({
   siteId,
   selectedDate,
   checklistId,
-  downtimeWindows,
-  nonWorkingWindows,
   planStartTime,
 }: StepStatusTableProps) {
   const queryClient = useQueryClient()
@@ -345,8 +341,6 @@ export function StepStatusTable({
           selectedDate={selectedDate}
           open={!!selectedPileId}
           onOpenChange={(open) => !open && setSelectedPileId(null)}
-          downtimeWindows={downtimeWindows}
-          nonWorkingWindows={nonWorkingWindows}
           planStartTime={planStartTime}
           onMeasurementsSaved={() => queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.checklist(checklistId) })}
         />

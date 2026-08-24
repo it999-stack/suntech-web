@@ -98,22 +98,27 @@ this step.
 
 ## Activity Delay
 
-**What it answers:** did the step itself take longer or shorter than planned,
-once time that wasn't really "working" is excluded.
+**What it answers:** did the step's actual span run longer or shorter than its
+full planned window.
 
 ```
 grossMinutes  = (actualEnd, or now if still running) − actualStart
-nettedMinutes = machine downtime on this step's track, overlapping [actualStart, actualEnd]
-              + non-working windows (lunch/shift-change), overlapping [actualStart, actualEnd]
-netMinutes    = max(0, grossMinutes − nettedMinutes)
-activityDelay = netMinutes − durationMinutes
+plannedWindow = durationMinutes + bufferMinutes
+activityDelay = grossMinutes − plannedWindow
 ```
 
-Machine downtime windows are **track-scoped** (only this step's own track's
-breakdowns count against it, via `downtimeWindows.filter(w => w.track === row.track)`).
-Non-working windows are **not** track-scoped — they stop everyone, so they're
-netted out unconditionally. `netMinutes` is floored at `0`. Positive = ran long
-even after netting; negative = finished faster. `null` when there's no
+No netting: machine downtime and non-working (lunch/shift-change) windows are
+**not** subtracted out here — any such time simply counts as part of the
+step's actual span, for or against it, like any other elapsed time. (This is
+a deliberate simplification — an earlier version of this formula netted both
+out before comparing against `durationMinutes` alone; that made two steps
+with the identical actual start/end show different Activity Delay figures
+depending on whether a breakdown happened to be logged, which was more
+confusing than useful here. Machine downtime and non-working windows are
+still used, unchanged, by the separate server-side Idle Time calculation
+below — this simplification is scoped to Activity Delay only.)
+
+Positive = ran long. Negative = finished faster. `null` when there's no
 `actualStart` yet, or the step has no `durationMinutes` to compare against.
 
 This calculation is per-step and self-contained — it does not chain across steps

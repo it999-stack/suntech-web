@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { CalendarClockIcon, ClipboardCheckIcon } from 'lucide-react'
 import { dateOnly, formatTime } from '@/lib/date'
 import { byNumber } from '@/lib/sort'
-import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from '../../../types/dashboard.types'
+import type { ChecklistStepRow } from '../../../types/dashboard.types'
 import { MachineRail } from './MachineRail'
 import { PileTimelineFooterStats } from './PileTimelineFooterStats'
 import { PlanActualStepColumn } from './PlanActualStepColumn'
@@ -12,8 +12,6 @@ import { buildTimelineLayout, findCurrentNodeIndex, groupConsecutiveMachines } f
 interface PileTimelinePanelProps {
   rows: ChecklistStepRow[]
   selectedDate: string // 'YYYY-MM-DD'
-  downtimeWindows?: MachineDowntimeWindow[]
-  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
   previousRowByStepKey?: Map<string, ChecklistStepRow | null>
 }
@@ -91,8 +89,6 @@ function SectionHeader({
 export function PileTimelinePanel({
   rows,
   selectedDate,
-  downtimeWindows = [],
-  nonWorkingWindows = [],
   planStartTime = null,
   previousRowByStepKey,
 }: PileTimelinePanelProps) {
@@ -186,8 +182,6 @@ export function PileTimelinePanel({
             cells={stepCells}
             mode="actual"
             column={COLUMNS.actualSteps}
-            downtimeWindows={downtimeWindows}
-            nonWorkingWindows={nonWorkingWindows}
             planStartTime={planStartTime}
             previousRowByStepKey={previousRowByStepKey}
           />

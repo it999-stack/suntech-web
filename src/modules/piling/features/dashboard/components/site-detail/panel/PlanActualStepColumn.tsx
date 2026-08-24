@@ -12,7 +12,7 @@ import {
 import { CalendarIcon, ChevronDownIcon, MessageSquareTextIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDuration, formatTimeRangeWithDay, minutesBetween } from '@/lib/date'
-import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from '../../../types/dashboard.types'
+import type { ChecklistStepRow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
 import { computeActivityDelay, computeStartDelay, formatDelta, rowChainKey, stepWorkStart } from '../lib/timelineMath'
 
@@ -25,8 +25,6 @@ interface PlanActualStepColumnProps {
   cells: StepCell[]
   mode: 'planned' | 'actual'
   column: number
-  downtimeWindows?: MachineDowntimeWindow[]
-  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
   // When provided (built from a whole day's checklist via
   // buildMachineChainPreviousRowMap), delay badges use the true per-machine,
@@ -57,8 +55,6 @@ export function PlanActualStepColumn({
   cells,
   mode,
   column,
-  downtimeWindows = [],
-  nonWorkingWindows = [],
   planStartTime = null,
   previousRowByStepKey,
 }: PlanActualStepColumnProps) {
@@ -83,8 +79,7 @@ export function PlanActualStepColumn({
             ? cells[index - 1].row
             : null
         const startDeltaMinutes = mode === 'actual' ? computeStartDelay(row, previousRow, planStartTime) : null
-        const activityDeltaMinutes =
-          mode === 'actual' ? computeActivityDelay(row, downtimeWindows, nonWorkingWindows, new Date()) : null
+        const activityDeltaMinutes = mode === 'actual' ? computeActivityDelay(row, new Date()) : null
         const startDelay = formatDelta(startDeltaMinutes)
         const activityDelay = formatDelta(activityDeltaMinutes)
 

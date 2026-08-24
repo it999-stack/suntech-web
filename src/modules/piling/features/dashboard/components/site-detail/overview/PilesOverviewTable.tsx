@@ -271,8 +271,6 @@ export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOv
             selectedDate={date}
             open={!!selectedPileId}
             onOpenChange={(open) => !open && setSelectedPileId(null)}
-            downtimeWindows={checklistDetailQuery.data?.downtimeWindows}
-            nonWorkingWindows={checklistDetailQuery.data?.nonWorkingWindows}
             planStartTime={checklistDetailQuery.data?.planStartTime}
             previousRowByStepKey={previousRowByStepKey}
             onMeasurementsSaved={() => invalidateThisPile(selectedPile.pileId)}

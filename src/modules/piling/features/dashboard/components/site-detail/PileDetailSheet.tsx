@@ -19,7 +19,7 @@ import {
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card"
 import { Button } from "@/components/ui/button"
 
-import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from "../../types/dashboard.types"
+import type { ChecklistStepRow } from "../../types/dashboard.types"
 import { PileTimelinePanel } from "./panel/PileTimelinePanel"
 import { StepStatusLegend } from "./status/StepStatusLegend"
 import { StatusPill } from "./status/StatusPill"
@@ -38,8 +38,6 @@ interface PileDetailSheetProps {
   selectedDate: string
   open: boolean
   onOpenChange: (open: boolean) => void
-  downtimeWindows?: MachineDowntimeWindow[]
-  nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
   previousRowByStepKey?: Map<string, ChecklistStepRow | null>
   // Fired after the measurements edit dialog saves successfully — caller
@@ -103,8 +101,6 @@ export function PileDetailSheet({
   selectedDate,
   open,
   onOpenChange,
-  downtimeWindows,
-  nonWorkingWindows,
   planStartTime,
   previousRowByStepKey,
   onMeasurementsSaved,
@@ -114,8 +110,8 @@ export function PileDetailSheet({
 
   const measurements = rows[0]?.measurements ?? null
   const delayTotals = useMemo(
-    () => computeDelayTotals(rows, downtimeWindows ?? [], nonWorkingWindows ?? [], planStartTime ?? null, new Date()),
-    [rows, downtimeWindows, nonWorkingWindows, planStartTime]
+    () => computeDelayTotals(rows, planStartTime ?? null, new Date()),
+    [rows, planStartTime]
   )
 
   return (
@@ -178,8 +174,6 @@ export function PileDetailSheet({
             <PileTimelinePanel
               rows={rows}
               selectedDate={selectedDate}
-              downtimeWindows={downtimeWindows}
-              nonWorkingWindows={nonWorkingWindows}
               planStartTime={planStartTime}
               previousRowByStepKey={previousRowByStepKey}
             />
