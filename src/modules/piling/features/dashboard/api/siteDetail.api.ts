@@ -13,7 +13,6 @@ import type {
   MachineDowntimeWindow,
   MachinePerformance,
   MachineSummary,
-  MachineTimeline,
   MachineTimelineBlock,
   MachineTimelineResponse,
   NonWorkingWindow,
@@ -447,8 +446,8 @@ interface RawMachinePerformance {
   piles_total: number
   current_pile_id_code: string | null
   current_step_name: string | null
-  cycle_time_actual_min: number | null
-  cycle_time_target_min: number | null
+  step_time_actual_min: number | null
+  step_time_planned_min: number | null
   utilization_pct: number | null
   delay_min: number
   start_delay_min: number
@@ -478,7 +477,8 @@ interface RawPileOverviewRow {
   completed_steps: number
   total_steps: number
   status: StepStatus
-  delay_min: number
+  start_delay_min: number
+  activity_delay_min: number
 }
 
 interface RawAttentionAlert {
@@ -544,8 +544,8 @@ function mapMachinePerformance(raw: RawMachinePerformance): MachinePerformance {
     pilesTotal: raw.piles_total,
     currentPileIdCode: raw.current_pile_id_code,
     currentStepName: raw.current_step_name,
-    cycleTimeActualMin: raw.cycle_time_actual_min,
-    cycleTimeTargetMin: raw.cycle_time_target_min,
+    stepTimeActualMin: raw.step_time_actual_min,
+    stepTimePlannedMin: raw.step_time_planned_min,
     utilizationPct: raw.utilization_pct,
     delayMin: raw.delay_min,
     startDelayMin: raw.start_delay_min,
@@ -579,7 +579,8 @@ function mapPileOverviewRow(raw: RawPileOverviewRow): PileOverviewRow {
     completedSteps: raw.completed_steps,
     totalSteps: raw.total_steps,
     status: raw.status,
-    delayMin: raw.delay_min,
+    startDelayMin: raw.start_delay_min,
+    activityDelayMin: raw.activity_delay_min,
   }
 }
 

@@ -229,15 +229,6 @@ function rowMachineId(row: ChecklistStepRow): string | null {
   return null
 }
 
-// Sums start/activity delay across every row that has one — start delay is
-// grouped by machine (not pile) internally, since a machine's start-delay
-// chain runs across every pile it works on in sequence, not resetting at
-// each pile boundary (see DELAY_CALCULATIONS.md). Works the same whether
-// `rows` is a single pile (sheet footer) or every pile on the site for the
-// day (site-wide summary card) — a machine's chain just happens to be one
-// pile long in the single-pile case. A pile with no rows that have an
-// actualStart yet contributes nothing (not a 0), so a totally unstarted day
-// comes back `null`, not a misleading "0 min delay".
 export function computeDelayTotals(
   rows: ChecklistStepRow[],
   downtimeWindows: MachineDowntimeWindow[],
@@ -245,8 +236,10 @@ export function computeDelayTotals(
   planStartTime: string | null,
   now: Date
 ): DelayTotals {
+  const completedRows = rows.filter((row) => row.actualStart && row.actualEnd)
+
   const byMachine = new Map<string, ChecklistStepRow[]>()
-  for (const row of rows) {
+  for (const row of completedRows) {
     const machineId = rowMachineId(row)
     if (machineId === null) continue
     const list = byMachine.get(machineId)
@@ -273,7 +266,7 @@ export function computeDelayTotals(
     })
   }
 
-  for (const row of rows) {
+  for (const row of completedRows) {
     const activityDelta = computeActivityDelay(row, downtimeWindows, nonWorkingWindows, now)
     if (activityDelta !== null) {
       totalActivity += activityDelta

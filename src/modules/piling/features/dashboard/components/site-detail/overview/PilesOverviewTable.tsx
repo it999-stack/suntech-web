@@ -23,9 +23,10 @@ import {
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
 import { EmptyState } from '@/components/EmptyState'
 import { Pagination } from '@/components/Pagination'
+import { today } from '@/lib/date'
 import { cn } from '@/lib/utils'
 import { siteDetailService } from '../../../api/siteDetail.api'
-import { siteDetailQueryKeys, usePileStepsForRange } from '../../../hooks/useSiteDetailQueries'
+import { PILE_HISTORY_FROM, siteDetailQueryKeys, usePileStepsForRange } from '../../../hooks/useSiteDetailQueries'
 import type { PileOverviewRow, StepStatus } from '../../../types/dashboard.types'
 import { EditPileActualDrawer } from '../EditPileActualDrawer'
 import { PileDetailSheet } from '../PileDetailSheet'
@@ -47,8 +48,8 @@ const statusFilterItems: { value: string; label: string }[] = [
   { value: 'completed', label: 'Completed' },
 ]
 
-const PAGE_SIZE = 5
-const PREFETCH_COUNT = 10
+const PAGE_SIZE = 15
+const PREFETCH_COUNT = 15
 
 export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOverviewTableProps) {
   const queryClient = useQueryClient()
@@ -58,10 +59,6 @@ export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOv
   const [selectedPileId, setSelectedPileId] = useState<string | null>(focusPileId ?? null)
   const [editPileId, setEditPileId] = useState<string | null>(null)
 
-  // focusPileId can change after mount (an Attention alert's "View" action
-  // firing while the table's already on screen) — adjust state directly
-  // during render (React's documented pattern for this) rather than via a
-  // useEffect, which would cost an extra render pass for the same update.
   const [lastFocusPileId, setLastFocusPileId] = useState(focusPileId ?? null)
   if (focusPileId && focusPileId !== lastFocusPileId) {
     setLastFocusPileId(focusPileId)
@@ -79,24 +76,25 @@ export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOv
   const totalPages = Math.max(Math.ceil(filteredRows.length / PAGE_SIZE), 1)
   const pageRows = filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  // Identity here is the physical pile id (row.pileId), not checklistPileId —
-  // /piling/piles/{pile_id}/steps (and PileDetailSheet) key off the pile
-  // itself, same as RangePileTable's existing pattern.
+  // The drawer always shows a pile's complete step history (see
+  // PILE_HISTORY_FROM), not just this page's single selected date — a pile's
+  // steps can span multiple days (e.g. CASING done yesterday, BORING today).
+  const histTo = today()
   const prefetchIds = useMemo(() => filteredRows.slice(0, PREFETCH_COUNT).map((row) => row.pileId), [filteredRows])
   useQueries({
     queries: prefetchIds.map((pileId) => ({
-      queryKey: siteDetailQueryKeys.pileStepsRange(pileId, date, date),
-      queryFn: () => siteDetailService.getPileStepsForRange(pileId, date, date),
+      queryKey: siteDetailQueryKeys.pileStepsRange(pileId, PILE_HISTORY_FROM, histTo),
+      queryFn: () => siteDetailService.getPileStepsForRange(pileId, PILE_HISTORY_FROM, histTo),
     })),
   })
 
   const selectedPile = piles.find((row) => row.pileId === selectedPileId) ?? null
   const editPile = piles.find((row) => row.pileId === editPileId) ?? null
-  const selectedStepsQuery = usePileStepsForRange(selectedPileId ?? undefined, date, date, !!selectedPileId)
-  const editStepsQuery = usePileStepsForRange(editPileId ?? undefined, date, date, !!editPileId)
+  const selectedStepsQuery = usePileStepsForRange(selectedPileId ?? undefined, PILE_HISTORY_FROM, histTo, !!selectedPileId)
+  const editStepsQuery = usePileStepsForRange(editPileId ?? undefined, PILE_HISTORY_FROM, histTo, !!editPileId)
 
   function invalidateThisPile(pileId: string) {
-    queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.pileStepsRange(pileId, date, date) })
+    queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.pileStepsRange(pileId, PILE_HISTORY_FROM, histTo) })
     queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.dashboardOverview(siteId, date) })
   }
 
@@ -152,19 +150,22 @@ export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOv
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Pile ID</TableHead>
-                  <TableHead>Area</TableHead>
+                  <TableHead className="sticky left-0 z-10 border-r border-border/60 bg-card">Pile ID</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Rig/Crane</TableHead>
                   <TableHead>Progress</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Delay</TableHead>
+                  <TableHead>Start Delay</TableHead>
+                  <TableHead>Activity Delay</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pageRows.map((row) => (
                   <TableRow key={row.pileId} className="cursor-pointer" onClick={() => setSelectedPileId(row.pileId)}>
-                    <TableCell className="font-medium text-foreground">{row.pileIdCode}</TableCell>
+                    <TableCell className="sticky left-0 z-10 border-r border-border/60 bg-card font-medium text-foreground">
+                      {row.pileIdCode}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{row.area ?? '—'}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {row.rig.machineNo} / {row.crane?.machineNo ?? '—'}
@@ -175,8 +176,29 @@ export function PilesOverviewTable({ piles, siteId, date, focusPileId }: PilesOv
                     <TableCell>
                       <StatusPill kind={row.status} />
                     </TableCell>
-                    <TableCell className={cn('tabular-nums', row.delayMin > 0 ? 'text-destructive' : row.delayMin < 0 ? 'text-success' : 'text-muted-foreground')}>
-                      {row.delayMin === 0 ? '—' : formatSignedDuration(row.delayMin)}
+                    <TableCell
+                      className={cn(
+                        'tabular-nums',
+                        row.startDelayMin > 0
+                          ? 'text-destructive'
+                          : row.startDelayMin < 0
+                            ? 'text-success'
+                            : 'text-muted-foreground'
+                      )}
+                    >
+                      {row.startDelayMin === 0 ? '—' : formatSignedDuration(row.startDelayMin)}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        'tabular-nums',
+                        row.activityDelayMin > 0
+                          ? 'text-destructive'
+                          : row.activityDelayMin < 0
+                            ? 'text-success'
+                            : 'text-muted-foreground'
+                      )}
+                    >
+                      {row.activityDelayMin === 0 ? '—' : formatSignedDuration(row.activityDelayMin)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

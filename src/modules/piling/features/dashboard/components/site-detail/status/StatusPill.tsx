@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { StatusPill as SharedStatusPill } from '@/modules/shared/components/StatusPill'
 import { stepStatusVisuals, type TimelineNodeKind } from './stepStatusVisuals'
 
 interface StatusPillProps {
@@ -9,15 +10,11 @@ interface StatusPillProps {
 export function StatusPill({ kind, className }: StatusPillProps) {
   const visual = stepStatusVisuals[kind]
   return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
-        visual.bgClassName,
-        className
-      )}
-    >
-      <visual.icon className={cn('size-3.5', visual.iconClassName)} />
-      {visual.label}
-    </div>
+    <SharedStatusPill
+      icon={visual.icon}
+      label={visual.label}
+      className={cn(visual.bgClassName, className)}
+      iconClassName={visual.iconClassName}
+    />
   )
 }

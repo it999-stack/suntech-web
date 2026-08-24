@@ -22,8 +22,9 @@ import {
 } from '@/components/ui/table'
 import { Drawer, DrawerContent } from '@/components/ui/drawer'
 import { EmptyState } from '@/components/EmptyState'
+import { today } from '@/lib/date'
 import { siteDetailService } from '../../api/siteDetail.api'
-import { siteDetailQueryKeys, usePileStepsForRange } from '../../hooks/useSiteDetailQueries'
+import { PILE_HISTORY_FROM, siteDetailQueryKeys, usePileStepsForRange } from '../../hooks/useSiteDetailQueries'
 import type { PileLifecycle, PileProgressRow, StepStatus } from '../../types/dashboard.types'
 import { EditPileActualDrawer } from './EditPileActualDrawer'
 import { PileDetailSheet } from './PileDetailSheet'
@@ -71,21 +72,26 @@ export function RangePileTable({ rows, siteId, from, to }: RangePileTableProps) 
     })
   }, [rows, statusFilter, search])
 
+  // The drawer always shows a pile's complete step history (see
+  // PILE_HISTORY_FROM), not just the range this table is currently scoped
+  // to — a pile's steps can span multiple days (e.g. CASING done yesterday,
+  // BORING today), including days outside the picked range.
+  const histTo = today()
   const prefetchIds = useMemo(() => rows.slice(0, PREFETCH_COUNT).map((row) => row.id), [rows])
   useQueries({
     queries: prefetchIds.map((pileId) => ({
-      queryKey: siteDetailQueryKeys.pileStepsRange(pileId, from, to),
-      queryFn: () => siteDetailService.getPileStepsForRange(pileId, from, to),
+      queryKey: siteDetailQueryKeys.pileStepsRange(pileId, PILE_HISTORY_FROM, histTo),
+      queryFn: () => siteDetailService.getPileStepsForRange(pileId, PILE_HISTORY_FROM, histTo),
     })),
   })
 
   const selectedPile = rows.find((row) => row.id === selectedPileId) ?? null
   const editPile = rows.find((row) => row.id === editPileId) ?? null
-  const selectedStepsQuery = usePileStepsForRange(selectedPileId ?? undefined, from, to, !!selectedPileId)
-  const editStepsQuery = usePileStepsForRange(editPileId ?? undefined, from, to, !!editPileId)
+  const selectedStepsQuery = usePileStepsForRange(selectedPileId ?? undefined, PILE_HISTORY_FROM, histTo, !!selectedPileId)
+  const editStepsQuery = usePileStepsForRange(editPileId ?? undefined, PILE_HISTORY_FROM, histTo, !!editPileId)
 
   function invalidateThisPile(pileId: string) {
-    queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.pileStepsRange(pileId, from, to) })
+    queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.pileStepsRange(pileId, PILE_HISTORY_FROM, histTo) })
     queryClient.invalidateQueries({ queryKey: siteDetailQueryKeys.pileProgressRange(siteId, from, to) })
   }
 

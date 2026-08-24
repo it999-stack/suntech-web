@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ConnectorLine } from '@/modules/shared/components/ConnectorLine'
 import { HorizontalConnector } from '@/modules/shared/components/HorizontalConnector'
 import { formatTime } from '@/lib/date'
+import { cn } from '@/lib/utils'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
 import type { TimelineNode } from '../lib/timelineMath'
 
@@ -43,7 +44,7 @@ export function StepTimelineRail({ cells, currentContentRow, nowLabel, column }:
 
         return (
           <div key={node.key} style={{ gridColumn: column, gridRow }} className="relative flex flex-col items-center">
-            <ConnectorLine solid={isPast} invisible={index === 0} className={`${visual.railClassName}`}  />
+            <ConnectorLine solid={isPast} invisible={index === 0} className={`${visual.railClassName}`} />
 
             <span className="mt-1 mb-1.5 text-[10px] font-medium whitespace-nowrap text-muted-foreground">
               {formatTime(node.atIso)}
@@ -52,8 +53,8 @@ export function StepTimelineRail({ cells, currentContentRow, nowLabel, column }:
             <div className="relative flex shrink-0 items-center justify-center">
               {!isBuffer && (
                 <>
-                  <HorizontalConnector side="left" className={`${visual.railClassName}`} />
-                  <HorizontalConnector side="right" className={`${visual.railClassName}`} />
+                  <HorizontalConnector side="left" className={cn(visual.railClassName, 'bg-transparent')} />
+                  <HorizontalConnector side="right" className={cn(visual.railClassName, 'bg-transparent')} />
                 </>
               )}
 

@@ -2,6 +2,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Image } from '@/components/ui/image'
 import { ProgressBar } from '@/modules/shared/components/ProgressBar'
+import { StatusPill } from '@/modules/shared/components/StatusPill'
 import { cn } from '@/lib/utils'
 import { formatTime } from '@/lib/date'
 import rigImage from '@/assets/images/rig.png'
@@ -17,9 +18,9 @@ export function MachinePerformanceCard({ machine }: MachinePerformanceCardProps)
   const status = machineStatusVisuals[machine.status]
   const isCrane = machine.machine.type === 'CRANE'
   const progressPct = machine.pilesTotal > 0 ? (machine.pilesCompleted / machine.pilesTotal) * 100 : 0
-  const cycleDelta =
-    machine.cycleTimeActualMin !== null && machine.cycleTimeTargetMin !== null
-      ? Math.round(machine.cycleTimeActualMin - machine.cycleTimeTargetMin)
+  const stepTimeDelta =
+    machine.stepTimeActualMin !== null && machine.stepTimePlannedMin !== null
+      ? Math.round(machine.stepTimeActualMin - machine.stepTimePlannedMin)
       : null
 
   return (
@@ -29,10 +30,7 @@ export function MachinePerformanceCard({ machine }: MachinePerformanceCardProps)
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <span className="font-semibold text-foreground">{machine.machine.machineNo}</span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className={cn('size-2 rounded-full', status.dotClassName)} />
-          {status.label}
-        </span>
+        <StatusPill icon={status.icon} label={status.label} className={status.bgClassName} iconClassName={status.iconClassName} />
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
@@ -61,13 +59,13 @@ export function MachinePerformanceCard({ machine }: MachinePerformanceCardProps)
 
         <div className="grid grid-cols-3 gap-2 border-t border-border pt-3 text-xs">
           <div>
-            <div className="text-muted-foreground">Cycle Time</div>
+            <div className="text-muted-foreground">Step Time</div>
             <div className="font-semibold tabular-nums text-foreground">
-              {machine.cycleTimeActualMin !== null ? Math.round(machine.cycleTimeActualMin) + 'm' : '—'}
+              {machine.stepTimeActualMin !== null ? Math.round(machine.stepTimeActualMin) + 'm' : '—'}
             </div>
-            {cycleDelta !== null && (
-              <div className={cn('tabular-nums', cycleDelta > 0 ? 'text-destructive' : 'text-success')}>
-                {formatSignedDuration(cycleDelta)}
+            {stepTimeDelta !== null && (
+              <div className={cn('tabular-nums', stepTimeDelta > 0 ? 'text-destructive' : 'text-success')}>
+                {formatSignedDuration(stepTimeDelta)}
               </div>
             )}
           </div>
@@ -76,11 +74,14 @@ export function MachinePerformanceCard({ machine }: MachinePerformanceCardProps)
             <div className="font-semibold tabular-nums text-foreground">{formatPercent0(machine.utilizationPct)}</div>
           </div>
           <div>
-            <div className="text-muted-foreground">Delay</div>
+            <div className="text-muted-foreground">Activity Delay</div>
             <div
-              className={cn('font-semibold tabular-nums', machine.delayMin > 0 ? 'text-destructive' : 'text-success')}
+              className={cn(
+                'font-semibold tabular-nums',
+                machine.activityDelayMin > 0 ? 'text-destructive' : 'text-success'
+              )}
             >
-              {formatSignedDuration(machine.delayMin)}
+              {formatSignedDuration(machine.activityDelayMin)}
             </div>
           </div>
         </div>

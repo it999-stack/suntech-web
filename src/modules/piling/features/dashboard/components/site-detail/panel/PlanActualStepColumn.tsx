@@ -9,8 +9,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { MessageSquareTextIcon } from 'lucide-react'
-import { formatDuration, formatTimeRange } from '@/lib/date'
+import { CalendarIcon, ChevronDownIcon, MessageSquareTextIcon } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { formatDuration, formatTimeRangeWithDay, minutesBetween } from '@/lib/date'
 import type { ChecklistStepRow, MachineDowntimeWindow, NonWorkingWindow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
 import { computeActivityDelay, computeStartDelay, formatDelta, stepWorkStart } from '../lib/timelineMath'
@@ -27,6 +28,23 @@ interface PlanActualStepColumnProps {
   downtimeWindows?: MachineDowntimeWindow[]
   nonWorkingWindows?: NonWorkingWindow[]
   planStartTime?: string | null
+}
+
+// Planned is always this fixed blue theme, regardless of a step's real
+// status — "planned" isn't a state that varies per step, it's just the
+// schedule. Actual keeps using stepStatusVisuals (status-based colors:
+// green=completed, amber=delayed, etc.) for its border/dot/pill, but its
+// footer stat band stays this same fixed emerald tint either way — the
+// footer's own colored delay text (red/green) already carries severity, so
+// the band itself is column identity, not another status indicator.
+const PLANNED_CARD_THEME = {
+  railBorder: 'border-l-blue-500',
+  dot: 'bg-blue-600 text-white',
+  pill: 'bg-blue-50 text-blue-700',
+  footer: 'bg-blue-50/70',
+}
+const ACTUAL_CARD_THEME = {
+  footer: 'bg-emerald-50/70',
 }
 
 export function PlanActualStepColumn({
@@ -56,20 +74,43 @@ export function PlanActualStepColumn({
         const startDelay = formatDelta(startDeltaMinutes)
         const activityDelay = formatDelta(activityDeltaMinutes)
 
+        // Planned shows the step's planned duration/buffer template. Actual
+        // shows how long it really took (actualEnd − actualStart) — never
+        // the same planned number twice. Only computed once both actual
+        // timestamps exist; a still-open step (start but no end) shows "—"
+        // rather than a live-guessed duration.
+        const durationMinutes =
+          mode === 'planned'
+            ? row.durationMinutes
+            : row.actualStart && row.actualEnd
+              ? minutesBetween(row.actualStart, row.actualEnd)
+              : null
+
         return (
           <Card
             key={row.stepId}
             style={{ gridColumn: column, gridRow }}
-            className={[
-              "relative overflow-hidden border-l-4 pl-0",
-              !hasActual && "opacity-60",
-              visual.railBorderClassName,
-            ].filter(Boolean).join(" ")}
+            className={cn(
+              // self-start: this row's shared grid height is set by whatever
+              // sits in it across every column (e.g. a machine-rail image far
+              // taller than any step card) — without this, the grid's default
+              // stretch would inflate the card to match, leaving a stray gap
+              // inside it. Sizing to its own content keeps every card's
+              // internal spacing identical regardless of what else is in its row.
+              'relative mt-4 gap-0 self-start overflow-hidden rounded-xl border-l-4 py-0 shadow-sm',
+              !hasActual && 'opacity-60',
+              mode === 'planned' ? PLANNED_CARD_THEME.railBorder : visual.railBorderClassName
+            )}
           >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2.5">
               <div className="flex items-center gap-2">
-                <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${visual.dotClassName}`}>
-                  {row.sequenceOrder}
+                <span
+                  className={cn(
+                    'flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold',
+                    mode === 'planned' ? PLANNED_CARD_THEME.dot : visual.dotClassName
+                  )}
+                >
+                  {index + 1}
                 </span>
                 <CardTitle className="text-sm font-medium">{row.stepName}</CardTitle>
               </div>
@@ -96,43 +137,80 @@ export function PlanActualStepColumn({
                     </PopoverContent>
                   </Popover>
                 )}
-                <StatusIcon className={`size-4 ${visual.iconClassName}`} />
+                {mode === 'planned' ? (
+                  <span className="flex size-5 items-center justify-center rounded-full border border-blue-200 text-blue-500">
+                    <ChevronDownIcon className="size-3" />
+                  </span>
+                ) : (
+                  <StatusIcon className={`size-4 ${visual.iconClassName}`} />
+                )}
               </div>
             </CardHeader>
 
-            <CardContent className="space-y-1.5 p-3 pt-0">
-              <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                  {hasActual ? formatTimeRange(start, end) : '—'}
-                  {startDelay && (
-                    <span
-                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${
-                        startDeltaMinutes! > 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
-                      }`}
-                    >
-                      start {startDelay}
-                    </span>
+            <CardContent className="flex flex-col gap-3 p-4 pt-0">
+              <span className="flex items-center gap-1.5 text-sm font-medium break-words text-foreground">
+                <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                {hasActual ? formatTimeRangeWithDay(start, end) : '—'}
+              </span>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium',
+                    mode === 'planned' ? PLANNED_CARD_THEME.pill : visual.pillClassName
                   )}
+                >
+                  {mode === 'planned' ? 'Scheduled' : !hasActual ? 'Pending' : visual.label}
                 </span>
-                <span className={`text-[11px] font-medium ${visual.iconClassName}`}>
-                  {mode === 'actual' && !hasActual ? 'Pending' : visual.label}
-                </span>
+                {startDelay && (
+                  <span
+                    className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${
+                      startDeltaMinutes! > 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
+                    }`}
+                  >
+                    start {startDelay}
+                  </span>
+                )}
               </div>
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  {formatDuration(row.durationMinutes)}
-                  {activityDelay && (
-                    <span
-                      className={`inline-flex items-center rounded px-1.5 py-0.5 text-xs font-semibold ${
-                        activityDeltaMinutes! > 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'
-                      }`}
-                    >
-                      activity {activityDelay}
-                    </span>
+              <div
+                className={cn(
+                  '-mx-4 -mb-4 grid grid-cols-2 gap-x-3 gap-y-2 px-4 py-3.5 text-xs',
+                  mode === 'planned' ? PLANNED_CARD_THEME.footer : ACTUAL_CARD_THEME.footer
+                )}
+              >
+                <div>
+                  <div className="text-[10px] tracking-wide text-muted-foreground uppercase">
+                    {mode === 'planned' ? 'Expected Duration' : 'Actual Duration'}
+                  </div>
+                  <div className="font-medium text-foreground">{formatDuration(durationMinutes)}</div>
+                </div>
+                <div>
+                  {mode === 'planned' ? (
+                    <>
+                      <div className="text-[10px] tracking-wide text-muted-foreground uppercase">Buffer</div>
+                      <div className="font-medium text-foreground">{formatDuration(row.bufferMinutes)}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[10px] tracking-wide text-muted-foreground uppercase">Activity Delay</div>
+                      <div
+                        className={cn(
+                          'font-medium',
+                          activityDeltaMinutes === null
+                            ? 'text-muted-foreground'
+                            : activityDeltaMinutes > 0
+                              ? 'text-destructive'
+                              : activityDeltaMinutes < 0
+                                ? 'text-success'
+                                : 'text-foreground'
+                        )}
+                      >
+                        {activityDelay ?? (activityDeltaMinutes === 0 ? '0 min' : '—')}
+                      </div>
+                    </>
                   )}
-                </span>
-                <span>Buffer: {formatDuration(row.bufferMinutes)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -34,6 +34,36 @@ export function formatTimeRange(startIso: string | null, endIso: string | null):
   return `${formatTime(startIso)} – ${formatTime(endIso)}`
 }
 
+// Time + short date, no year — matches the mobile app's formatTimeWithDay
+// (suntech-app/src/utils/formatTime.ts). e.g. "2:40 PM, 20 Aug".
+export function formatTimeWithDay(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  const day = d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+  return `${time}, ${day}`
+}
+
+// Time range with short date — a shared date when both timestamps fall on
+// the same day ("20 Aug, 2:40 PM – 4:10 PM"), or each side's own date when
+// they don't (a step can now span a day boundary, e.g. resumed the next
+// day), so bare times alone would be ambiguous about which day is which.
+export function formatTimeRangeWithDay(startIso: string | null, endIso: string | null): string {
+  if (!startIso && !endIso) return '—'
+  if (!startIso) return `— – ${formatTimeWithDay(endIso)}`
+  if (!endIso) return `${formatTimeWithDay(startIso)} – —`
+
+  const s = new Date(startIso)
+  const e = new Date(endIso)
+  if (dateOnly(s) === dateOnly(e)) {
+    const day = s.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+    const startTime = s.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    const endTime = e.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+    return `${day}, ${startTime} – ${endTime}`
+  }
+  return `${formatTimeWithDay(startIso)} – ${formatTimeWithDay(endIso)}`
+}
+
 export function formatDuration(minutes: number | null): string {
   if (minutes == null) return '—'
   const hours = Math.floor(minutes / 60)

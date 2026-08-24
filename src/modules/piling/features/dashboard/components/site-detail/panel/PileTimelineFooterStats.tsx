@@ -61,9 +61,6 @@ interface BoreProgressPanelProps {
 function BoreProgressPanel({ diameterMm, totalDepthM, boredDepthM, stepStatus, tickCount = 4 }: BoreProgressPanelProps) {
   const clipId = useId()
 
-  // Guard against undefined/NaN reaching here — a caller mid-migration that
-  // hasn't wired up real dia/depth yet should render an empty "0 mm"
-  // cylinder, not throw.
   const safeDiameterMm = Number.isFinite(diameterMm) ? diameterMm : 0
   const safeTotalDepthM = Number.isFinite(totalDepthM) ? totalDepthM : 0
   const safeBoredDepthM = Number.isFinite(boredDepthM) ? boredDepthM : 0

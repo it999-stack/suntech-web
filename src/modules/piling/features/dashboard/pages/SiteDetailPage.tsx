@@ -25,7 +25,7 @@ import { PilesOverviewTable } from '../components/site-detail/overview/PilesOver
 import { MachineActivityTimeline } from '../components/site-detail/overview/MachineActivityTimeline'
 import { MachinePerformanceSection } from '../components/site-detail/overview/MachinePerformanceSection'
 import { SiteDashboardStatRow } from '../components/site-detail/overview/SiteDashboardStatRow'
-import { SummaryByArea } from '../components/site-detail/overview/SummaryByArea'
+import { SummaryByLocation } from '../components/site-detail/overview/SummaryByLocation'
 import { RangePileTable } from '../components/site-detail/RangePileTable'
 import { SiteProgressRangeChart } from '../components/site-detail/SiteProgressRangeChart'
 import { buildRangeChartPoints } from '../api/siteDetail.api'
@@ -311,6 +311,7 @@ export default function SiteDetailPage() {
             referenceNow={referenceNow}
             planStartTime={machineTimelineQuery.data?.planStartTime ?? null}
             isLoading={machineTimelineQuery.isLoading}
+            resetKey={`${range.from}:${machineFilter}`}
           />
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="lg:col-span-1">
@@ -320,7 +321,7 @@ export default function SiteDetailPage() {
               <PilesOverviewTable piles={filteredPiles} siteId={siteId!} date={range.from} focusPileId={focusPileId} />
             </div>
           </div>
-          <SummaryByArea areas={overview.areas} />
+          <SummaryByLocation locations={overview.areas} />
         </>
       )}
     </div>

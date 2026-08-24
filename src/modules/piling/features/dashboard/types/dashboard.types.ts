@@ -211,9 +211,15 @@ export interface MachinePerformance {
   pilesTotal: number
   currentPileIdCode: string | null
   currentStepName: string | null
-  cycleTimeActualMin: number | null
-  cycleTimeTargetMin: number | null
+  // Sum of actual/planned duration across this machine's fully completed
+  // steps today — a step still in progress (actual start, no actual end
+  // yet) isn't counted, since its eventual duration isn't known yet.
+  stepTimeActualMin: number | null
+  stepTimePlannedMin: number | null
   utilizationPct: number | null
+  // start/activity delay are sums across this machine's fully completed
+  // steps only (see stepTimeActualMin) — a step still in progress is
+  // excluded rather than having its delay estimated against "now".
   delayMin: number
   startDelayMin: number
   activityDelayMin: number
@@ -245,7 +251,8 @@ export interface PileOverviewRow {
   completedSteps: number
   totalSteps: number
   status: StepStatus
-  delayMin: number
+  startDelayMin: number
+  activityDelayMin: number
 }
 
 export type AttentionAlertSeverity = 'info' | 'warning' | 'critical'

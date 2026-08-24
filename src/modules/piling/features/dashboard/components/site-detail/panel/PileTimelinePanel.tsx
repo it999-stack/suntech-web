@@ -28,26 +28,61 @@ function ColumnDivider({ column }: { column: number }) {
   return <div style={{ gridColumn: column, gridRow: '1 / -1' }} className="w-px justify-self-center bg-border" />
 }
 
-// Merged section header spanning a machine column + its adjacent steps
-// column (and the divider between them) — rendered after the ColumnDivider
-// elements so its opaque background paints over that divider for row 1 only;
-// the divider still shows normally starting from row 2 down.
-function SectionHeader({
-  icon: Icon,
-  label,
-  gridColumn,
-}: {
-  icon: typeof CalendarClockIcon
-  label: string
-  gridColumn: string
-}) {
+// Column identity, not step status — Planned is always blue, Actual is
+// always emerald, regardless of any individual step's own status (a step's
+// real status still shows via its own pill/circle color on the Actual side;
+// see PlanActualStepColumn).
+const PLANNED_THEME = {
+  text: 'text-blue-700',
+  iconBg: 'bg-blue-100 text-blue-600',
+  panel: 'bg-blue-50/60 ring-1 ring-blue-100',
+}
+const ACTUAL_THEME = {
+  text: 'text-emerald-700',
+  iconBg: 'bg-emerald-100 text-emerald-600',
+  panel: 'bg-emerald-50/60 ring-1 ring-emerald-100',
+}
+
+// Tinted backdrop spanning the full height of one steps column (behind its
+// header + every card in it) — rendered before everything else so later
+// siblings (dividers, header, cards) naturally paint on top. Wider than the
+// column itself (negative margin) so the cards inside read as inset within a
+// frame, and so it reaches all the way to the adjacent divider — the timeline
+// rail's horizontal dashed connectors travel through that gap, and without
+// full coverage they'd cross a strip of plain (white) background instead of
+// this panel's tint. 33px = columnGap(16) + divider(1) + columnGap(16), the
+// fixed distance from this column's edge to the neighboring divider.
+function SectionPanel({ gridColumn, className }: { gridColumn: string; className: string }) {
   return (
     <div
-      style={{ gridColumn, gridRow: 1 }}
-      className="flex items-center justify-center gap-1.5 rounded-lg bg-card py-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase ring-1 ring-foreground/10"
-    >
-      <Icon className="size-3.5" />
-      {label}
+      style={{ gridColumn, gridRow: '1 / -1', margin: '0 -33px 12px' }}
+      className={`rounded-xl ${className}`}
+    />
+  )
+}
+
+function SectionHeader({
+  icon: Icon,
+  title,
+  subtitle,
+  gridColumn,
+  theme,
+}: {
+  icon: typeof CalendarClockIcon
+  title: string
+  subtitle: string
+  gridColumn: string
+  theme: typeof PLANNED_THEME
+}) {
+  return (
+    <div style={{ gridColumn, gridRow: 1 }} className="flex items-center gap-2 px-2 pt-3 pb-2">
+      <span className={`flex size-7 shrink-0 items-center justify-center rounded-md ${theme.iconBg}`}>
+        <Icon className="size-4" />
+      </span>
+      <div className="flex flex-col leading-tight">
+        <span className={`text-sm font-bold tracking-wide ${theme.text}`}>{title}</span>
+        <span className="text-xs text-muted-foreground">{subtitle}</span>
+      </div>
     </div>
   )
 }
@@ -115,12 +150,27 @@ export function PileTimelinePanel({
             columnGap: '1rem',
           }}
         >
+          <SectionPanel gridColumn={String(COLUMNS.plannedSteps)} className={PLANNED_THEME.panel} />
+          <SectionPanel gridColumn={String(COLUMNS.actualSteps)} className={ACTUAL_THEME.panel} />
+
           <ColumnDivider column={4} />
           <ColumnDivider column={6} />
           <ColumnDivider column={8} />
 
-          <SectionHeader icon={CalendarClockIcon} label="Planned" gridColumn="1 / 4" />
-          <SectionHeader icon={ClipboardCheckIcon} label="Actual" gridColumn="7 / 10" />
+          <SectionHeader
+            icon={CalendarClockIcon}
+            title="PLANNED SCHEDULE"
+            subtitle="Expected plan"
+            gridColumn={String(COLUMNS.plannedSteps)}
+            theme={PLANNED_THEME}
+          />
+          <SectionHeader
+            icon={ClipboardCheckIcon}
+            title="ACTUAL EXECUTION"
+            subtitle="Recorded on site"
+            gridColumn={String(COLUMNS.actualSteps)}
+            theme={ACTUAL_THEME}
+          />
 
           <MachineRail cells={plannedMachineCells} column={COLUMNS.plannedMachines} side="right" />
           <PlanActualStepColumn cells={stepCells} mode="planned" column={COLUMNS.plannedSteps} />

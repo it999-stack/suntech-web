@@ -1,3 +1,4 @@
+import { ActivityIcon, AlertTriangleIcon, CircleOffIcon, PauseCircleIcon, type LucideIcon } from 'lucide-react'
 import { formatDuration } from '@/lib/date'
 import type { MachineActivityStatus } from '../../../../types/dashboard.types'
 
@@ -16,9 +17,36 @@ export function formatPercent0(value: number | null): string {
 
 // Shared between MachinePerformanceCard and MachineActivityTimeline so both
 // read a machine's ACTIVE/IDLE/BREAKDOWN/INACTIVE status the same way.
-export const machineStatusVisuals: Record<MachineActivityStatus, { label: string; dotClassName: string }> = {
-  ACTIVE: { label: 'Working', dotClassName: 'bg-success' },
-  IDLE: { label: 'Idle', dotClassName: 'bg-warning' },
-  BREAKDOWN: { label: 'Breakdown', dotClassName: 'bg-destructive' },
-  INACTIVE: { label: 'Inactive', dotClassName: 'bg-muted-foreground' },
+export const machineStatusVisuals: Record<
+  MachineActivityStatus,
+  { label: string; dotClassName: string; icon: LucideIcon; bgClassName: string; iconClassName: string }
+> = {
+  ACTIVE: {
+    label: 'Working',
+    dotClassName: 'bg-success',
+    icon: ActivityIcon,
+    bgClassName: 'border-success/20 bg-success/10 text-success',
+    iconClassName: 'text-success',
+  },
+  IDLE: {
+    label: 'Idle',
+    dotClassName: 'bg-warning',
+    icon: PauseCircleIcon,
+    bgClassName: 'border-warning/20 bg-warning/10 text-warning',
+    iconClassName: 'text-warning',
+  },
+  BREAKDOWN: {
+    label: 'Breakdown',
+    dotClassName: 'bg-destructive',
+    icon: AlertTriangleIcon,
+    bgClassName: 'border-destructive/20 bg-destructive/10 text-destructive',
+    iconClassName: 'text-destructive',
+  },
+  INACTIVE: {
+    label: 'Inactive',
+    dotClassName: 'bg-muted-foreground',
+    icon: CircleOffIcon,
+    bgClassName: 'border-border bg-muted text-muted-foreground',
+    iconClassName: 'text-muted-foreground',
+  },
 }

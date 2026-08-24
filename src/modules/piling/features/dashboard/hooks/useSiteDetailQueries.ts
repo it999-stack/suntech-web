@@ -2,6 +2,16 @@ import { useQuery } from '@tanstack/react-query'
 import { dashboardService } from '../api/dashboard.api'
 import { siteDetailService } from '../api/siteDetail.api'
 
+// A pile's steps can span multiple checklists on different days (e.g. CASING
+// done yesterday, BORING today) — PileDetailSheet always shows the pile's
+// complete history regardless of which single day or range the calling
+// table happens to be scoped to, rather than whatever narrower window it's
+// currently showing. '2000-01-01' is a safely-early sentinel bound, not a
+// real constraint: the underlying query is still scoped to one pile_id, so
+// this widens the filter's lower bound, not the actual result set (a pile
+// only ever has checklist rows for the handful of days it was worked).
+export const PILE_HISTORY_FROM = '2000-01-01'
+
 export const siteDetailQueryKeys = {
   site: (siteId: string) => ['piling-site-detail', 'site', siteId] as const,
   planState: (siteId: string, date: string) => ['piling-site-detail', 'plan-state', siteId, date] as const,

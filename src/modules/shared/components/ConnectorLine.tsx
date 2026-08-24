@@ -7,9 +7,6 @@ interface ConnectorLineProps {
   className?: string
 }
 
-// A single segment of a connecting line between nodes on a rail/stepper —
-// solid when the segment has been "passed", dashed otherwise, or fully
-// invisible (still occupies layout space) for the outermost segments.
 export function ConnectorLine({ solid, invisible, orientation = 'vertical', className }: ConnectorLineProps) {
   const isVertical = orientation === 'vertical'
 

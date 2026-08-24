@@ -120,18 +120,6 @@ function plannedDurationOf(block: MachineTimeline['blocks'][number]): number | n
     : null
 }
 
-// Two parallel tracks per machine, both laid out on the same axis so a
-// step's actual bar and its planned (avg.) bar line up when they agree and
-// visibly diverge when they don't:
-//
-// - Actual track: Idle gaps interleaved with real segments for whichever
-//   steps have actually started (actualStart recorded) — a step that hasn't
-//   started yet simply isn't here, so the time it would have occupied reads
-//   as one continuous Idle span, including a trailing one if the machine has
-//   gone quiet since its last recorded activity.
-// - Planned track: one dashed segment per plan step, positioned by its own
-//   planned_start/planned_end regardless of whether it's started — no Idle
-//   filling here, gaps are just blank.
 export function buildMachineTimelineRows(
   timelines: MachineTimeline[],
   axis: TimelineAxis,
@@ -155,27 +143,46 @@ export function buildMachineTimelineRows(
     let cursorIso = axis.start.toISOString()
     let lastActivityIso: string | null = null
 
-    for (const { block, startIso, endIso, isOngoing } of startedBlocks) {
+    for (let i = 0; i < startedBlocks.length; i++) {
+      const { block, startIso, endIso, isOngoing } = startedBlocks[i]
       if (new Date(startIso).getTime() > new Date(cursorIso).getTime()) {
         segments.push(toSegment(cursorIso, startIso, axis, true, false, 'Idle', null, `idle-${cursorIso}`))
       }
       const actualDurationMin = Math.round((new Date(endIso).getTime() - new Date(startIso).getTime()) / 60_000)
+
+      const plannedMin = plannedDurationOf(block)
+      let renderEndIso =
+        isOngoing && plannedMin
+          ? new Date(
+              Math.min(new Date(endIso).getTime(), new Date(startIso).getTime() + plannedMin * 60_000)
+            ).toISOString()
+          : endIso
+
+      const nextStartIso = startedBlocks[i + 1]?.startIso
+      if (nextStartIso && new Date(nextStartIso).getTime() < new Date(renderEndIso).getTime()) {
+        renderEndIso = nextStartIso
+      }
+
+      if (new Date(renderEndIso).getTime() <= new Date(startIso).getTime()) {
+        renderEndIso = new Date(new Date(startIso).getTime() + 60_000).toISOString()
+      }
+
       const blockKey = `${block.checklistPileId}-${block.stepName}`
       const actualSegment = toSegment(
         startIso,
-        endIso,
+        renderEndIso,
         axis,
         false,
         isOngoing,
         block.stepName,
         block.pileIdCode,
         blockKey,
-        plannedDurationOf(block),
+        plannedMin,
         actualDurationMin
       )
       segments.push(actualSegment)
       actualByBlockKey.set(blockKey, actualSegment)
-      if (new Date(endIso).getTime() > new Date(cursorIso).getTime()) cursorIso = endIso
+      if (new Date(renderEndIso).getTime() > new Date(cursorIso).getTime()) cursorIso = renderEndIso
       if (!isOngoing) lastActivityIso = endIso
     }
 
@@ -184,14 +191,6 @@ export function buildMachineTimelineRows(
       segments.push(toSegment(cursorIso, trailingEndIso, axis, true, true, 'Idle', null, `idle-trailing-${cursorIso}`))
     }
 
-    // The avg badge sits directly beneath its matching actual bar — same
-    // left/width, for a direct visual compare — which only exists once the
-    // step has actually started. A step that hasn't started yet has no
-    // actual bar to align under; falling back to its own original planned
-    // position doesn't work once the day has drifted far behind schedule
-    // (common here — see DELAY_CALCULATIONS.md), since that stale slot then
-    // renders on top of whatever's actually happening there now instead.
-    // The still-Idle stretch of the row already communicates "not started".
     const plannedSegments: TimelineSegment[] = timeline.blocks.flatMap((block) => {
       const blockKey = `${block.checklistPileId}-${block.stepName}`
       const actualSegment = actualByBlockKey.get(blockKey)
@@ -216,9 +215,6 @@ export function buildMachineTimelineRows(
   })
 }
 
-// Duration of the shortest real (non-idle) segment across every row, in
-// minutes — used to pick a pixels-per-hour scale wide enough that even that
-// segment's label fits, rather than truncating short steps' time ranges.
 export function shortestSegmentMinutes(rows: MachineTimelineRow[]): number | null {
   let shortest: number | null = null
   for (const row of rows) {

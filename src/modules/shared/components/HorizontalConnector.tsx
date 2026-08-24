@@ -6,11 +6,6 @@ interface HorizontalConnectorProps {
   className?: string
 }
 
-// Dashed connector reaching from a rail node/bar toward an adjacent card —
-// a small end-cap dot sits at the card-facing end. `side` flips the internal
-// order so the dot always faces the card regardless of which side it's on.
-// Must be placed inside a `relative` parent that sits flush against the edge
-// the connector should extend from.
 export function HorizontalConnector({ side, width = 65, className }: HorizontalConnectorProps) {
   const isLeft = side === 'left'
   return (

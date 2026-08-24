@@ -76,6 +76,7 @@ export function MachineRail({ cells, column, side }: MachineRailProps) {
               isRight
                 ? [
                     'items-start',
+                    'pl-3', // this rail sits on the panel's outer-left edge — room before it, not just after
                     'border-r-2',
                     theme.line,
                     'before:absolute before:-right-[5px] before:top-0 before:size-2 before:rounded-full',
@@ -84,6 +85,7 @@ export function MachineRail({ cells, column, side }: MachineRailProps) {
                   ]
                 : [
                     'items-end',
+                    'pr-3', // this rail sits on the panel's outer-right edge — room after it, not just before
                     'border-l-2',
                     theme.line,
                     'before:absolute before:-left-[5px] before:top-0 before:size-2 before:rounded-full',
@@ -96,7 +98,7 @@ export function MachineRail({ cells, column, side }: MachineRailProps) {
               
               <div className="flex flex-col items-center leading-tight gap-1">
                 <MachineTypeIcon type={cell.machine.type} />
-                <span className={cn('text-lg font-semibold', theme.text)}>
+                <span className={cn('max-w-[100px] text-lg font-semibold break-words', theme.text)}>
                   {cell.machine.machineNo}
                 </span>
               </div>

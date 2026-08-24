@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import type { ReactNode } from "react"
-import { ChevronRightIcon, ClockIcon, Info, PencilIcon, TimerIcon } from "lucide-react"
+import { ChevronRightIcon, Info, PencilIcon, TimerIcon } from "lucide-react"
 
 import {
   Drawer,
@@ -66,46 +66,29 @@ function getDelaySeverity(minutes: number | null) {
   return "success"
 }
 
-const severityStyles = {
-  critical: { text: "text-destructive", bar: "bg-destructive", track: "bg-destructive/15" },
-  success: { text: "text-success", bar: "bg-success", track: "bg-success/15" },
-  neutral: { text: "text-muted-foreground", bar: "bg-muted-foreground", track: "bg-muted" },
+const severityPillStyles = {
+  critical: "bg-destructive/10 text-destructive",
+  success: "bg-success/10 text-success",
+  neutral: "bg-muted text-muted-foreground",
 } as const
 
-function DelayGauge({
-  icon: Icon,
-  label,
-  minutes,
-  maxScale = 180, // minutes at which the bar reads "full" — tune to your typical range
-}: {
-  icon: typeof ClockIcon
-  label: string
-  minutes: number | null
-  maxScale?: number
-}) {
+// Compact overall-pile activity delay indicator — sits in the header next to
+// the info icon, not as a full-width gauge (see DELAY_CALCULATIONS.md for
+// what "activity delay" means; this is computeDelayTotals()'s pile total).
+function ActivityDelayPill({ minutes }: { minutes: number | null }) {
   const formatted = formatDelta(minutes)
   const severity = getDelaySeverity(minutes)
-  const styles = severityStyles[severity]
-  const fillPct = minutes === null ? 0 : Math.min(100, (Math.abs(minutes) / maxScale) * 100)
 
   return (
-    <div className="flex-1 px-4 first:pl-0 last:pr-0 not-first:border-l">
-      <div className="mb-2 flex items-baseline justify-between">
-        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          <Icon className="size-3.5" />
-          {label}
-        </span>
-        <span className={cn("text-lg font-semibold tabular-nums", styles.text)}>
-          {formatted ?? (minutes === null ? "—" : "0 min")}
-        </span>
-      </div>
-      <div className={cn("h-1 w-full rounded-full", styles.track)}>
-        <div
-          className={cn("h-full rounded-full transition-all", styles.bar)}
-          style={{ width: `${fillPct}%` }}
-        />
-      </div>
-    </div>
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded px-2 py-1 text-xs font-semibold",
+        severityPillStyles[severity]
+      )}
+    >
+      <TimerIcon className="size-3.5" />
+      Activity Delay {formatted ?? (minutes === null ? "—" : "0 min")}
+    </span>
   )
 }
 
@@ -163,29 +146,27 @@ export function PileDetailSheet({
               <StatusPill kind={status} />
             </div>
 
-            <HoverCard>
-              <HoverCardTrigger
-                render={
-                  <button
-                    type="button"
-                    aria-label="Status legend"
-                    className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                }
-              >
-                <Info className="size-4 cursor-pointer" />
-              </HoverCardTrigger>
-              <HoverCardContent side="bottom" align="end" className="w-auto">
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status Legend</p>
-                <StepStatusLegend />
-              </HoverCardContent>
-            </HoverCard>
-          </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <ActivityDelayPill minutes={delayTotals.totalActivityDelayMinutes} />
 
-          {/* Bottom row: full-width delay gauges */}
-          <div className="mt-3 flex items-stretch rounded-md border bg-background/60 px-4 py-3">
-            <DelayGauge icon={ClockIcon} label="Start Delay" minutes={delayTotals.totalStartDelayMinutes} />
-            <DelayGauge icon={TimerIcon} label="Activity Delay" minutes={delayTotals.totalActivityDelayMinutes} />
+              <HoverCard>
+                <HoverCardTrigger
+                  render={
+                    <button
+                      type="button"
+                      aria-label="Status legend"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  }
+                >
+                  <Info className="size-4 cursor-pointer" />
+                </HoverCardTrigger>
+                <HoverCardContent side="bottom" align="end" className="w-auto">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status Legend</p>
+                  <StepStatusLegend />
+                </HoverCardContent>
+              </HoverCard>
+            </div>
           </div>
         </DrawerHeader>
 
