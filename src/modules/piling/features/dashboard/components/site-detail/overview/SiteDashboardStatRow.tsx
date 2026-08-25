@@ -6,9 +6,6 @@ import overviewBg from '@/assets/overview_bg.png'
 
 const DELAY_WARNING_THRESHOLD_MIN = 45
 
-// Shared shape for the KPI row — the site-wide overview.stats when no rig is
-// selected, or a single rig's own numbers (see SiteDetailPage) when the rig
-// filter narrows the page down to one machine.
 export interface SiteDashboardStatRowData {
   pilesCompleted: number
   pilesTotal: number

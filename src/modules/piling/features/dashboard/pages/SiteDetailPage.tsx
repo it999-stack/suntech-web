@@ -111,15 +111,13 @@ export default function SiteDetailPage() {
     [overview, selectedMachineIds]
   )
 
-  // Site-wide stats when no machine is selected, or the selected machines'
-  // combined numbers otherwise (sums for count/delay figures, averages for
-  // percentages) — keeps the KPI row in sync with the machine filter. With
-  // exactly one machine selected this reduces to that machine's own numbers,
-  // same as the old single-select behavior.
   const statRowData = useMemo(() => {
     if (selectedMachineIds.length === 0) return overview?.stats ?? null
     if (filteredMachines.length === 0) return null
-    const utilizationValues = filteredMachines.map((m) => m.utilizationPct).filter((v): v is number => v != null)
+    const utilizationValues = filteredMachines
+      .filter((m) => m.machine.type === 'RIG')
+      .map((m) => m.utilizationPct)
+      .filter((v): v is number => v != null)
     const adherenceValues = filteredMachines.map((m) => m.scheduleAdherencePct).filter((v): v is number => v != null)
     const average = (values: number[]) => (values.length ? values.reduce((a, b) => a + b, 0) / values.length : null)
     return {
