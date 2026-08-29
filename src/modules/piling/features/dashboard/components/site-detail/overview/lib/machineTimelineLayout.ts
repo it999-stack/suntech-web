@@ -114,10 +114,12 @@ function toSegment(
   }
 }
 
+// block.plannedEnd includes the step's trailing buffer_minutes as part of
+// its scheduled block (see plan_generation_service.py) — diffing
+// plannedStart/plannedEnd would fold that buffer into "planned duration",
+// so this reads the step's own duration_minutes directly instead.
 function plannedDurationOf(block: MachineTimeline['blocks'][number]): number | null {
-  return block.plannedEnd
-    ? Math.round((new Date(block.plannedEnd).getTime() - new Date(block.plannedStart).getTime()) / 60_000)
-    : null
+  return block.durationMinutes
 }
 
 export function buildMachineTimelineRows(

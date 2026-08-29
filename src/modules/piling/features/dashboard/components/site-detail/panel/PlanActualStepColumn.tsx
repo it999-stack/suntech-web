@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 import { formatDuration, formatTimeRangeWithDay, minutesBetween } from '@/lib/date'
 import type { ChecklistStepRow } from '../../../types/dashboard.types'
 import { stepStatusVisuals } from '../status/stepStatusVisuals'
-import { computeActivityDelay, computeStartDelay, formatDelta, rowChainKey, stepWorkStart } from '../lib/timelineMath'
+import { computeSettledActivityDelay, computeStartDelay, formatDelta, rowChainKey, stepWorkStart } from '../lib/timelineMath'
 
 export interface StepCell {
   gridRow: number
@@ -79,7 +79,12 @@ export function PlanActualStepColumn({
             ? cells[index - 1].row
             : null
         const startDeltaMinutes = mode === 'actual' ? computeStartDelay(row, previousRow, planStartTime) : null
-        const activityDeltaMinutes = mode === 'actual' ? computeActivityDelay(row, new Date()) : null
+        // computeSettledActivityDelay (not computeActivityDelay directly) —
+        // an ongoing step (start but no end) would otherwise show a live
+        // estimate against "now" that balloons the longer it stays open;
+        // this card shows "—" for that case instead, same rule
+        // computeDelayTotals already applies when summing.
+        const activityDeltaMinutes = mode === 'actual' ? computeSettledActivityDelay(row, new Date()) : null
         const startDelay = formatDelta(startDeltaMinutes)
         const activityDelay = formatDelta(activityDeltaMinutes)
 

@@ -103,20 +103,29 @@ full planned window.
 
 ```
 grossMinutes  = (actualEnd, or now if still running) − actualStart
-plannedWindow = durationMinutes + bufferMinutes
-activityDelay = grossMinutes − plannedWindow
+activityDelay = grossMinutes − durationMinutes
 ```
+
+`bufferMinutes` plays no part in this comparison — it's setup/travel time
+before the step's work starts, not part of the step's own working time, so
+it isn't added to `durationMinutes` here. (It's still shown as its own field
+for reference, and it *is* used elsewhere — Start Delay's `expectedStart`
+and the server-side Idle Time buffer window both key off it — just not in
+this formula.)
 
 No netting: machine downtime and non-working (lunch/shift-change) windows are
 **not** subtracted out here — any such time simply counts as part of the
 step's actual span, for or against it, like any other elapsed time. (This is
-a deliberate simplification — an earlier version of this formula netted both
-out before comparing against `durationMinutes` alone; that made two steps
-with the identical actual start/end show different Activity Delay figures
-depending on whether a breakdown happened to be logged, which was more
-confusing than useful here. Machine downtime and non-working windows are
-still used, unchanged, by the separate server-side Idle Time calculation
-below — this simplification is scoped to Activity Delay only.)
+a deliberate simplification — an earlier version of this formula netted
+machine downtime and non-working windows out before comparing against
+`durationMinutes` alone; that made two steps with the identical actual
+start/end show different Activity Delay figures depending on whether a
+breakdown happened to be logged, which was more confusing than useful here.
+Machine downtime and non-working windows are still used, unchanged, by the
+separate server-side Idle Time calculation below — this simplification is
+scoped to Activity Delay only. A later revision also briefly folded
+`bufferMinutes` into the comparison window; that has since been reverted —
+see above.)
 
 Positive = ran long. Negative = finished faster. `null` when there's no
 `actualStart` yet, or the step has no `durationMinutes` to compare against.
@@ -124,6 +133,23 @@ Positive = ran long. Negative = finished faster. `null` when there's no
 This calculation is per-step and self-contained — it does not chain across steps
 or piles the way Start Delay does, so `computeDelayTotals()` sums it over every
 row independently (no grouping needed).
+
+**Display vs. aggregate — `computeSettledActivityDelay` vs. `computeActivityDelay`:**
+`computeActivityDelay` itself still returns a *live* estimate against `now`
+for an open step (started, not finished) — that's the "now if still
+running" branch above, and it balloons without bound the longer the step
+stays open. `computeDelayTotals()` already guards against this by only
+summing rows where `isRowCompleted(row)` (`actualStart && actualEnd`) is
+true before ever calling `computeActivityDelay`. Any screen that displays
+one row's Activity Delay (not summing many) must apply that same guard, or
+risk showing a nonsense number like `+9103 min` for a step that's simply
+still running — call `computeSettledActivityDelay(row, now)` instead of
+`computeActivityDelay` directly; it returns `null` (rendered as `—`) while
+the step is open and only defers to `computeActivityDelay` once
+`isRowCompleted` is true. `PlanActualStepColumn.tsx`'s per-step card is the
+reference caller. This mirrors `delay_service.is_completed_row` on the
+backend, which gates the same way for the Excel export's per-row cells and
+Total rows (see suntech-core's own `DELAY_CALCULATIONS.md`).
 
 ## Idle Time
 

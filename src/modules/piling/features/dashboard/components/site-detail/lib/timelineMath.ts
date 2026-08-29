@@ -165,21 +165,49 @@ export function computeStartDelay(
 }
 
 /**
- * Positive = the step's actual span ran longer than its full planned window
- * (duration + buffer). Negative = finished faster. Null = no actual start
- * yet, or the step has no planned duration to compare against. No actual
- * end yet -> live estimate using `now` in its place.
+ * Positive = the step's actual span ran longer than its planned duration.
+ * Negative = finished faster. Null = no actual start yet, or the step has
+ * no planned duration to compare against. No actual end yet -> live
+ * estimate using `now` in its place.
  *
- * Compares the raw actual span directly against duration + buffer — no
- * netting of machine downtime or non-working windows. Any such time now
- * simply counts for or against the step like any other elapsed time.
+ * Compares the raw actual span directly against durationMinutes alone —
+ * bufferMinutes is setup/travel time before the step starts, not part of
+ * the step's own working time, so it plays no part in this comparison
+ * (it's still shown separately elsewhere). No netting of machine downtime
+ * or non-working windows either. Any such time now simply counts for or
+ * against the step like any other elapsed time.
  */
 export function computeActivityDelay(row: ChecklistStepRow, now: Date): number | null {
   if (!row.actualStart || row.durationMinutes == null) return null
   const start = new Date(row.actualStart)
   const end = row.actualEnd ? new Date(row.actualEnd) : now
   const grossMinutes = differenceInMinutes(end, start)
-  return grossMinutes - (row.durationMinutes + (row.bufferMinutes ?? 0))
+  return grossMinutes - row.durationMinutes
+}
+
+/**
+ * A row's Activity Delay only counts as a settled figure once both
+ * actualStart and actualEnd are recorded — same rule
+ * delay_service.is_completed_row applies on the backend (see
+ * DELAY_CALCULATIONS.md), kept here as one named predicate instead of an
+ * inline `row.actualStart && row.actualEnd` check repeated per call site.
+ */
+export function isRowCompleted(row: ChecklistStepRow): boolean {
+  return !!row.actualStart && !!row.actualEnd
+}
+
+/**
+ * Activity Delay for DISPLAY: null while the step is still open (started,
+ * not finished) — even though computeActivityDelay itself returns a live
+ * estimate against `now` in that case, which balloons without bound the
+ * longer the step stays open. computeDelayTotals already gates on
+ * isRowCompleted before summing; any screen that shows a single row's
+ * Activity Delay (rather than aggregating many) should call this instead
+ * of computeActivityDelay directly, so that gate can't be forgotten on a
+ * new screen the way it was on the per-step timeline card.
+ */
+export function computeSettledActivityDelay(row: ChecklistStepRow, now: Date): number | null {
+  return isRowCompleted(row) ? computeActivityDelay(row, now) : null
 }
 
 export function formatDelta(minutes: number | null): string | null {
@@ -249,7 +277,7 @@ export function buildMachineChainPreviousRowMap(rows: ChecklistStepRow[]): Map<s
 }
 
 export function computeDelayTotals(rows: ChecklistStepRow[], planStartTime: string | null, now: Date): DelayTotals {
-  const completedRows = rows.filter((row) => row.actualStart && row.actualEnd)
+  const completedRows = rows.filter(isRowCompleted)
 
   const byMachine = new Map<string, ChecklistStepRow[]>()
   for (const row of completedRows) {

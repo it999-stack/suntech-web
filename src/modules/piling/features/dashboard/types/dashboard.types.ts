@@ -301,6 +301,10 @@ export interface MachineTimelineBlock {
   track: PilingTrack
   plannedStart: string
   plannedEnd: string | null
+  // The step's own execution time, excluding buffer_minutes — plannedEnd
+  // includes the trailing buffer as part of its scheduled block, so this is
+  // what "planned duration" (e.g. the timeline's "Avg" label) should read.
+  durationMinutes: number | null
   actualStart: string | null
   actualEnd: string | null
 }

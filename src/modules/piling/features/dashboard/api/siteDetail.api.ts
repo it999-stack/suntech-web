@@ -522,6 +522,7 @@ interface RawMachineTimelineBlock {
   track: PilingTrack
   planned_start: string
   planned_end: string | null
+  duration_minutes: number | null
   actual_start: string | null
   actual_end: string | null
 }
@@ -639,6 +640,7 @@ function mapMachineTimelineBlock(raw: RawMachineTimelineBlock): MachineTimelineB
     track: raw.track,
     plannedStart: raw.planned_start,
     plannedEnd: raw.planned_end,
+    durationMinutes: raw.duration_minutes,
     actualStart: raw.actual_start,
     actualEnd: raw.actual_end,
   }

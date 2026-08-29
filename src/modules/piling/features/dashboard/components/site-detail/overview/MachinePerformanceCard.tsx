@@ -18,10 +18,6 @@ export function MachinePerformanceCard({ machine }: MachinePerformanceCardProps)
   const status = machineStatusVisuals[machine.status]
   const isCrane = machine.machine.type === 'CRANE'
   const progressPct = machine.pilesTotal > 0 ? (machine.pilesCompleted / machine.pilesTotal) * 100 : 0
-  const stepTimeDelta =
-    machine.stepTimeActualMin !== null && machine.stepTimePlannedMin !== null
-      ? Math.round(machine.stepTimeActualMin - machine.stepTimePlannedMin)
-      : null
 
   return (
     <Card
@@ -59,15 +55,19 @@ export function MachinePerformanceCard({ machine }: MachinePerformanceCardProps)
 
         <div className="grid grid-cols-3 gap-2 border-t border-border pt-3 text-xs">
           <div>
-            <div className="text-muted-foreground">Step Time</div>
-            <div className="font-semibold tabular-nums text-foreground">
-              {machine.stepTimeActualMin !== null ? Math.round(machine.stepTimeActualMin) + 'm' : '—'}
+            <div className="text-muted-foreground">Start Delay</div>
+            <div
+              className={cn(
+                'font-semibold tabular-nums',
+                machine.startDelayMin > 0
+                  ? 'text-destructive'
+                  : machine.startDelayMin < 0
+                    ? 'text-success'
+                    : 'text-foreground'
+              )}
+            >
+              {machine.startDelayMin === 0 ? '—' : formatSignedDuration(machine.startDelayMin)}
             </div>
-            {stepTimeDelta !== null && (
-              <div className={cn('tabular-nums', stepTimeDelta > 0 ? 'text-destructive' : 'text-success')}>
-                {formatSignedDuration(stepTimeDelta)}
-              </div>
-            )}
           </div>
           <div>
             <div className="text-muted-foreground">Utilization</div>
