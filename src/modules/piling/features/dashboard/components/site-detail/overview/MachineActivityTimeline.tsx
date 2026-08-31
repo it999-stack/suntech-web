@@ -47,16 +47,8 @@ function colorForSegment(segment: TimelineSegment): string {
   return STEP_COLORS[segment.label.toUpperCase()] ?? FALLBACK_COLOR
 }
 
-// Hour tick labels ("08:00 AM") are spaced exactly pxPerHour apart (one per
-// hour) — at low zoom that spacing can be narrower than the label itself,
-// so adjacent labels overlap into an unreadable smear. Shrinks the font
-// down to HOUR_TICK_MIN_FONT_PX proportionally to how little room each tick
-// actually has, rather than letting them collide at a fixed size.
 const HOUR_TICK_FULL_FONT_PX = 12
-const HOUR_TICK_MIN_FONT_PX = 8
-// Approx rendered width of "08:00 AM" at HOUR_TICK_FULL_FONT_PX — once a
-// tick has at least this much horizontal room, full size fits with no risk
-// of the label bleeding into its neighbor.
+const HOUR_TICK_MIN_FONT_PX = 7
 const HOUR_TICK_FULL_WIDTH_PX = 62
 function hourTickFontPx(pxPerHour: number): number {
   if (pxPerHour >= HOUR_TICK_FULL_WIDTH_PX) return HOUR_TICK_FULL_FONT_PX
@@ -73,11 +65,6 @@ function formatSegmentMinutes(minutes: number): string {
   return mins === 0 ? `${hours}h` : `${hours}h ${mins}m`
 }
 
-// "Actual: 4h 40m | Avg: 3h 45m" — actual vs. the step's planned (avg.)
-// duration, shown on the dashed badge (not the solid actual bar above it,
-// which only carries the pile/step name and its actual start–end time).
-// Only the half that's known is shown when the other isn't (e.g. not
-// started yet has no actual; a still-open plan window has no planned end).
 function durationCompareLabel(segment: TimelineSegment): string | null {
   const actual = segment.actualDurationMin !== null ? `Actual: ${formatSegmentMinutes(segment.actualDurationMin)}` : null
   const avg = segment.plannedDurationMin !== null ? `Avg: ${formatSegmentMinutes(segment.plannedDurationMin)}` : null
@@ -100,28 +87,11 @@ const LEGEND_ITEMS = [...Object.keys(STEP_COLORS).map((k) => [titleCase(k), STEP
 
 const MACHINE_COLUMN_WIDTH = 176
 const SUMMARY_COLUMN_WIDTH = 168
-// Baseline pixels-per-hour — wide enough that tick labels stay legible even
-// across many hours. Bumped up dynamically (see MIN_SEGMENT_LABEL_PX below)
-// when the shortest real step on screen would otherwise render too narrow
-// to show its own start–end time, rather than truncating that label.
 const BASE_PX_PER_HOUR = 130
 const MAX_PX_PER_HOUR = 420
 const MIN_SEGMENT_LABEL_PX = 150
 const MIN_TRACK_WIDTH = 640
-// A real (non-idle) segment always renders at least this wide, regardless
-// of how short its actual/planned duration is or how far zoomed out the
-// view is — below ~2x the rounded-md corner radius, a box's left/right
-// corner curves collide and the shape reads as "cut off" rather than a
-// complete rounded rectangle. Idle segments aren't floored (they're just
-// background filler, not primary info), and since idle segments render
-// first (see the two-pass render below), a floored real segment simply
-// draws on top of whatever idle space it eats into rather than getting
-// covered by it.
 const MIN_REAL_SEGMENT_PX = 28
-// Idle labels are filler, not real work data — unlike the "always show real
-// step text, even cramped" rule, it's fine to just hide an idle box's own
-// text below these widths rather than risk it bleeding into a neighboring
-// (real, floor-widened) box's territory.
 const IDLE_LABEL_MIN_PX = 40
 const IDLE_RANGE_MIN_PX = 110
 
@@ -131,12 +101,6 @@ interface RenderBox {
   widthPx: number
 }
 
-// Positions every segment in one pass over the already time-ordered array so
-// a real segment's MIN_REAL_SEGMENT_PX floor never reaches past wherever
-// the *next* segment (idle or real) actually starts. Floor-widening each
-// box in isolation, with no awareness of its neighbor, could otherwise make
-// two adjacent boxes visually overlap even though their real time ranges
-// don't — this caps the floor to whatever room is actually available first.
 function computeRenderBoxes(segments: TimelineSegment[], trackWidth: number): RenderBox[] {
   const natural = segments.map((segment) => ({
     segment,
@@ -144,32 +108,19 @@ function computeRenderBoxes(segments: TimelineSegment[], trackWidth: number): Re
     widthPx: (segment.widthPct / 100) * trackWidth,
   }))
   return natural.map((box, i) => {
-    if (box.segment.isIdle) return box
     const nextLeftPx = natural[i + 1]?.leftPx ?? Infinity
-    const available = nextLeftPx - box.leftPx
-    return { ...box, widthPx: Math.max(box.widthPx, Math.min(MIN_REAL_SEGMENT_PX, available)) }
+    const available = Math.max(0, nextLeftPx - box.leftPx)
+    const cappedWidthPx = Math.min(box.widthPx, available)
+    if (box.segment.isIdle) return { ...box, widthPx: cappedWidthPx }
+    return { ...box, widthPx: Math.max(cappedWidthPx, Math.min(MIN_REAL_SEGMENT_PX, available)) }
   })
 }
-// Ctrl/Cmd+scroll (and Mac trackpad pinch, which the browser reports as a
-// wheel event with ctrlKey set regardless of the actual key held) zooms the
-// track between these two absolute px/hour bounds — well below and above
-// the BASE_PX_PER_HOUR..MAX_PX_PER_HOUR auto-fit range above, which only
-// picks the *default* scale. ZOOM_SPEED tunes how much one wheel "tick"
-// changes the scale; deltaY is clamped first so one fast physical mouse
-// notch can't jump several zoom levels at once the way it could on some mice.
+
 const MIN_ZOOM_PX_PER_HOUR = 40
-const MAX_ZOOM_PX_PER_HOUR = 1200
+const MAX_ZOOM_PX_PER_HOUR = 2400
 const ZOOM_SPEED = 0.004
 const MAX_ZOOM_WHEEL_DELTA = 250
-// Breathing room at each end of the scrollable track — without it, the
-// first/last hour tick's centered label (and the very first/last segment)
-// sit flush against the sticky machine column and the scroll edge and get
-// visually clipped.
 const EDGE_PADDING_PX = 40
-
-// Two stacked bars per real step — a solid "actual" bar on top, a dashed
-// "planned (avg.)" bar directly below it — plus a taller Idle bar spanning
-// the same combined height so idle gaps read at a consistent visual weight.
 const ROW_HEIGHT = 88
 const ACTUAL_BAR_HEIGHT = 46
 const PLANNED_BAR_HEIGHT = 22
@@ -203,9 +154,6 @@ export function MachineActivityTimeline({
   }, [axis, referenceNow])
 
   const axisHours = Math.max((axis.end.getTime() - axis.start.getTime()) / (60 * 60 * 1000), 1)
-  // The auto-fit scale — wide enough that even the shortest real segment on
-  // screen can show its own start–end time. This is the "un-zoomed" default;
-  // zoomPxPerHour (null until the user actually zooms) overrides it.
   const basePxPerHour = useMemo(() => {
     const shortestMinutes = shortestSegmentMinutes(rows)
     if (!shortestMinutes) return BASE_PX_PER_HOUR
@@ -216,33 +164,13 @@ export function MachineActivityTimeline({
   const pxPerHour = zoomPxPerHour ?? basePxPerHour
   const trackWidth = Math.max(Math.round(axisHours * pxPerHour), MIN_TRACK_WIDTH)
 
-  // Zoom resets to the auto-fit view whenever the caller says the underlying
-  // selection changed (date or machine filter) — a stale zoom level carried
-  // over onto different data reads as broken, not helpful.
   useEffect(() => {
     setZoomPxPerHour(null)
   }, [resetKey])
 
-  // Lets a plain vertical mouse-wheel scroll this wide track horizontally,
-  // like a Gantt chart, instead of requiring the scrollbar or shift+wheel —
-  // and Ctrl+scroll (Windows/Linux) / Cmd+scroll or trackpad pinch (Mac,
-  // which the browser reports as a wheel event with ctrlKey set regardless
-  // of the actual key held) zooms the track in/out around the cursor instead
-  // of panning it. Registered as a native listener (not React's onWheel)
-  // because React attaches wheel handlers as passive by default, which
-  // silently ignores preventDefault() and lets the page/browser zoom or
-  // scroll underneath too.
   const scrollTrackRef = useRef<HTMLDivElement>(null)
-  // Read inside the wheel handler via a ref (updated every render, no effect
-  // needed for the assignment itself) so the listener can always see the
-  // latest pxPerHour/trackWidth without being torn down and re-attached on
-  // every render — that churn would drop wheel events mid-gesture.
   const latestRef = useRef({ pxPerHour, trackWidth })
   latestRef.current = { pxPerHour, trackWidth }
-  // Set by the wheel handler right before a zoom-triggered re-render, and
-  // consumed by the layout effect below once that render lands — keeps
-  // whatever time-point was under the cursor fixed on screen across the
-  // zoom step, instead of the view jumping.
   const pendingZoomAnchorRef = useRef<{ fraction: number; cursorOffsetX: number } | null>(null)
 
   useEffect(() => {
@@ -419,6 +347,9 @@ export function MachineActivityTimeline({
                               isolation and overlapping anyway. */}
                           {(() => {
                             const boxes = computeRenderBoxes(segments, trackWidth)
+                            const realBoxByBlockKey = new Map(
+                              boxes.filter((box) => !box.segment.isIdle).map((box) => [box.segment.key, box])
+                            )
                             return (
                               <>
                                 {boxes
@@ -477,37 +408,46 @@ export function MachineActivityTimeline({
                                       </div>
                                     )
                                   })}
+                                {/* The planned (avg.) badge always renders at the exact
+                                    leftPx/widthPx of its actual bar above — they share the
+                                    same startIso/endIso, so any difference could only come
+                                    from sizing them independently (as computeRenderBoxes did
+                                    previously, capping each track's MIN_REAL_SEGMENT_PX floor
+                                    against a different set of neighbors — plannedSegments has
+                                    no Idle entries, so its "room to widen into" doesn't match
+                                    the actual track's). Reusing the real box's width instead
+                                    keeps the two always aligned; the existing `truncate` on
+                                    the label handles a box floored down too narrow to fit it. */}
+                                {plannedSegments.flatMap((segment) => {
+                                  const box = realBoxByBlockKey.get(segment.key.replace(/^planned-/, ''))
+                                  if (!box) return []
+                                  const color = colorForSegment(segment)
+                                  return [
+                                    <div
+                                      key={segment.key}
+                                      title={plannedSegmentTooltip(segment)}
+                                      className="absolute flex items-center justify-center overflow-hidden rounded-md border border-dashed px-2 text-center"
+                                      style={{
+                                        left: box.leftPx,
+                                        width: box.widthPx,
+                                        top: PLANNED_TOP,
+                                        height: PLANNED_BAR_HEIGHT,
+                                        borderColor: color,
+                                        backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
+                                        color,
+                                      }}
+                                    >
+                                      {durationCompareLabel(segment) && (
+                                        <span className="w-full truncate text-[10px] font-medium leading-none">
+                                          {durationCompareLabel(segment)}
+                                        </span>
+                                      )}
+                                    </div>,
+                                  ]
+                                })}
                               </>
                             )
                           })()}
-                          {computeRenderBoxes(
-                            [...plannedSegments].sort((a, b) => a.leftPct - b.leftPct),
-                            trackWidth
-                          ).map(({ segment, leftPx, widthPx }) => {
-                            const color = colorForSegment(segment)
-                            return (
-                              <div
-                                key={segment.key}
-                                title={plannedSegmentTooltip(segment)}
-                                className="absolute flex items-center justify-center overflow-hidden rounded-md border border-dashed px-2 text-center"
-                                style={{
-                                  left: leftPx,
-                                  width: widthPx,
-                                  top: PLANNED_TOP,
-                                  height: PLANNED_BAR_HEIGHT,
-                                  borderColor: color,
-                                  backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
-                                  color,
-                                }}
-                              >
-                                {durationCompareLabel(segment) && (
-                                  <span className="w-full truncate text-[10px] font-medium leading-none">
-                                    {durationCompareLabel(segment)}
-                                  </span>
-                                )}
-                              </div>
-                            )
-                          })}
                         </div>
 
                         <div
