@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { PageLoader } from '@/components/PageLoader'
 import { SiteFormDialog } from '../components/SiteFormDialog'
 import { SitesTable } from '../components/SitesTable'
 import { useSites } from '../hooks/useSites'
@@ -24,9 +24,9 @@ export default function SitesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6">
       {sitesQuery.isLoading ? (
-        <TableSkeleton rows={5} columns={6} />
+        <PageLoader />
       ) : (
         <SitesTable sites={sitesQuery.data ?? []} onEdit={handleEdit} onCreate={handleCreate} />
       )}

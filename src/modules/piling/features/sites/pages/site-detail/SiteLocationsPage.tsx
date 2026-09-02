@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { MapIcon, PencilLine, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { PageLoader } from '@/components/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -23,7 +23,7 @@ export default function SiteLocationsPage() {
   return (
     <>
       {locationsQuery.isLoading ? (
-        <TableSkeleton rows={8} columns={3} />
+        <PageLoader />
       ) : (
         <Card>
           <CardHeader>

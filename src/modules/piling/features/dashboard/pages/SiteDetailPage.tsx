@@ -11,10 +11,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { DateRangePicker } from '@/components/DateRangePicker'
 import { EmptyState } from '@/components/EmptyState'
+import { PageLoader } from '@/components/PageLoader'
 import { apiClient } from '@/lib/apiClient'
 import { dateOnly, formatTime, today } from '@/lib/date'
 import { getErrorMessage } from '@/lib/errors'
@@ -152,6 +151,10 @@ export default function SiteDetailPage() {
 
   const site = siteQuery.data
 
+  const isPageLoading = siteQuery.isLoading || (isSingleDay
+    ? planStateQuery.isLoading || overviewQuery.isLoading
+    : pileProgressQuery.isLoading || progressHistoryQuery.isLoading)
+
   const checklistId = planStateQuery.data?.exists ? planStateQuery.data.checklistId : null
 
   async function handleExport(type: 'delay' | 'boring') {
@@ -199,30 +202,14 @@ export default function SiteDetailPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Link
-        to="/piling/dashboard"
-        className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeftIcon className="size-4" />
-      </Link>
-
+    <div className="flex flex-1 flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          {siteQuery.isLoading ? (
-            <div className="h-7 w-48 animate-pulse rounded bg-muted" />
-          ) : (
-            <>
-              <h1 className="text-xl font-semibold text-foreground">{site?.name ?? 'Site not found'}</h1>
-              {site && (
-                <p className="text-sm text-muted-foreground">
-                  {site.clientName} · {site.companyName}
-                  {site.location ? ` · ${site.location}` : ''}
-                </p>
-              )}
-            </>
-          )}
-        </div>
+        <Link
+          to="/piling/dashboard"
+          className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeftIcon className="size-4" />
+        </Link>
 
         <div className="flex items-center gap-2">
           {isSingleDay && checklistId && (
@@ -259,78 +246,90 @@ export default function SiteDetailPage() {
         </div>
       </div>
 
-      {isSingleDay && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <MachineMultiSelectFilter
-              options={machineFilterOptions}
-              selected={selectedMachineIds}
-              onApply={setSelectedMachineIds}
-            />
-          </div>
-          {overview && (
-            <button
-              type="button"
-              onClick={handleRefresh}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <RefreshCwIcon className={`size-3.5 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
-              Last updated: {formatTime(overview.lastUpdated)}
-            </button>
-          )}
-        </div>
-      )}
-
-      {!isSingleDay ? (
-        <>
-          <SiteProgressRangeChart points={rangeChartPoints} />
-          {pileProgressQuery.isLoading ? (
-            <TableSkeleton rows={5} columns={6} />
-          ) : (
-            <RangePileTable rows={pileProgressQuery.data ?? []} siteId={siteId!} from={range.from} to={range.to} />
-          )}
-        </>
-      ) : planStateQuery.isLoading || overviewQuery.isLoading ? (
-        <>
-          <CardSkeleton lines={6} />
-          <TableSkeleton rows={5} columns={8} />
-        </>
-      ) : !planStateQuery.data?.exists || !overview?.checklistExists ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Site Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EmptyState
-              icon={CalendarIcon}
-              title="No plan for this date"
-              description="No checklist has been generated for this site on the selected date."
-            />
-          </CardContent>
-        </Card>
+      {isPageLoading ? (
+        <PageLoader />
       ) : (
         <>
-          {statRowData && (
-            <SiteDashboardStatRow stats={statRowData} title={statRowTitle} description={statRowDescription} />
-          )}
-          <MachinePerformanceSection machines={filteredMachines} />
-          <MachineActivityTimeline
-            timelines={filteredTimelines}
-            machines={filteredMachines}
-            referenceNow={referenceNow}
-            planStartTime={machineTimelineQuery.data?.planStartTime ?? null}
-            isLoading={machineTimelineQuery.isLoading}
-            resetKey={`${range.from}:${selectedMachineIds.join(',')}`}
-          />
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-1">
-              <AttentionRequiredPanel alerts={overview.alerts} onView={handleViewAlert} />
-            </div>
-            <div className="lg:col-span-2">
-              <PilesOverviewTable piles={filteredPiles} siteId={siteId!} date={range.from} focusPileId={focusPileId} />
-            </div>
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">{site?.name ?? 'Site not found'}</h1>
+            {site && (
+              <p className="text-sm text-muted-foreground">
+                {site.clientName} · {site.companyName}
+                {site.location ? ` · ${site.location}` : ''}
+              </p>
+            )}
           </div>
-          <SummaryByLocation locations={overview.areas} />
+
+          {isSingleDay && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <MachineMultiSelectFilter
+                  options={machineFilterOptions}
+                  selected={selectedMachineIds}
+                  onApply={setSelectedMachineIds}
+                />
+              </div>
+              {overview && (
+                <button
+                  type="button"
+                  onClick={handleRefresh}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <RefreshCwIcon className={`size-3.5 ${overviewQuery.isFetching ? 'animate-spin' : ''}`} />
+                  Last updated: {formatTime(overview.lastUpdated)}
+                </button>
+              )}
+            </div>
+          )}
+
+          {!isSingleDay ? (
+            <>
+              <SiteProgressRangeChart points={rangeChartPoints} />
+              <RangePileTable rows={pileProgressQuery.data ?? []} siteId={siteId!} from={range.from} to={range.to} />
+            </>
+          ) : !planStateQuery.data?.exists || !overview?.checklistExists ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Site Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <EmptyState
+                  icon={CalendarIcon}
+                  title="No plan for this date"
+                  description="No checklist has been generated for this site on the selected date."
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {statRowData && (
+                <SiteDashboardStatRow stats={statRowData} title={statRowTitle} description={statRowDescription} />
+              )}
+              <MachinePerformanceSection machines={filteredMachines} />
+              <MachineActivityTimeline
+                timelines={filteredTimelines}
+                machines={filteredMachines}
+                referenceNow={referenceNow}
+                planStartTime={machineTimelineQuery.data?.planStartTime ?? null}
+                isLoading={machineTimelineQuery.isLoading}
+                resetKey={`${range.from}:${selectedMachineIds.join(',')}`}
+              />
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="lg:col-span-1">
+                  <AttentionRequiredPanel alerts={overview.alerts} onView={handleViewAlert} />
+                </div>
+                <div className="lg:col-span-2">
+                  <PilesOverviewTable
+                    piles={filteredPiles}
+                    siteId={siteId!}
+                    date={range.from}
+                    focusPileId={focusPileId}
+                  />
+                </div>
+              </div>
+              <SummaryByLocation locations={overview.areas} />
+            </>
+          )}
         </>
       )}
     </div>

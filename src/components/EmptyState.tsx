@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
-import { InboxIcon, Loader2 } from 'lucide-react'
+import { InboxIcon } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
@@ -27,9 +28,9 @@ export function EmptyState({
         className
       )}
     >
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full border bg-muted/50">
+      <div className="flex h-16 w-16 items-center justify-center">
         {loading ? (
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Spinner className="size-6 text-muted-foreground" />
         ) : (
           <Icon className="h-8 w-8 text-muted-foreground" />
         )}

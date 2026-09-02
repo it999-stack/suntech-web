@@ -3,7 +3,7 @@ import { PencilLine, PhoneIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { EmptyState } from '@/components/EmptyState'
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { PageLoader } from '@/components/PageLoader'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -39,7 +39,7 @@ export default function SiteSupportContactsPage() {
   return (
     <>
       {contactsQuery.isLoading ? (
-        <TableSkeleton rows={8} columns={5} />
+        <PageLoader />
       ) : (
         <Card>
           <CardHeader>

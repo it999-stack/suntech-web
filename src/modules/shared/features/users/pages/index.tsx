@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { KeyRound, PencilLine, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react'
 import { EmptyState } from '@/components/EmptyState'
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { PageLoader } from '@/components/PageLoader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,7 +34,7 @@ export default function UsersPage() {
   return (
     <>
       {usersQuery.isLoading ? (
-        <TableSkeleton rows={8} columns={5} />
+        <PageLoader />
       ) : (
         <Card>
           <CardHeader>

@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { ClipboardCheckIcon, DrillIcon, ListChecksIcon, TargetIcon } from 'lucide-react'
-import { CardSkeleton } from '@/components/skeletons/CardSkeleton'
-import { KpiRowSkeleton } from '@/components/skeletons/KpiRowSkeleton'
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
 import { DateRangePicker } from '@/components/DateRangePicker'
+import { PageLoader } from '@/components/PageLoader'
 import { ActivityFeed } from '@/modules/shared/components/ActivityFeed'
 import { AlertsPanel } from '@/modules/shared/components/AlertsPanel'
 import { SiteProgressTable } from '../components/index/SiteProgressTable'
@@ -24,60 +22,58 @@ export default function PilingDashboardPage() {
   const sites = dashboardQuery.data?.sites ?? []
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex justify-end">
-        <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
-      </div>
-
+    <div className="flex flex-1 flex-col gap-6">
       {dashboardQuery.isLoading ? (
-        <KpiRowSkeleton />
+        <PageLoader />
       ) : (
-        <QuickOverviewCard
-          title="Quick overview"
-          description="This is all over site progress today"
-          backgroundImage={overviewBg}
-          items={[
-            {
-              value: overview
-                ? `${overview.completedPiles} / ${overview.totalPiles}`
-                : '—',
-              label: 'Total piles progress',
-              icon: <ClipboardCheckIcon className="size-4" />,
-            },
-            {
-              value: overview
-                ? `${overview.targetCompletedPiles} / ${overview.targetPlannedPiles}`
-                : '—',
-              label: "Today's target",
-              icon: <TargetIcon className="size-4" />,
-            },
-            {
-              value: overview
-                ? `${overview.activeRigs} / ${overview.totalRigs}`
-                : '—',
-              label: 'Active rigs',
-              icon: <DrillIcon className="size-4" />,
-            },
-            {
-              value: overview
-                ? `${overview.checklistsSubmitted} / ${overview.checklistsExpected}`
-                : '—',
-              label: "Today's checklists",
-              icon: <ListChecksIcon className="size-4" />,
-            },
-          ]}
-        />
-      )}
+        <>
+          <div className="flex justify-end">
+            <DateRangePicker from={range.from} to={range.to} onChange={setRange} />
+          </div>
 
-      {dashboardQuery.isLoading ? (
-        <TableSkeleton rows={5} columns={8} />
-      ) : (
-        <SiteProgressTable sites={sites} />
+          <QuickOverviewCard
+            title="Quick overview"
+            description="This is all over site progress today"
+            backgroundImage={overviewBg}
+            items={[
+              {
+                value: overview
+                  ? `${overview.completedPiles} / ${overview.totalPiles}`
+                  : '—',
+                label: 'Total piles progress',
+                icon: <ClipboardCheckIcon className="size-4" />,
+              },
+              {
+                value: overview
+                  ? `${overview.targetCompletedPiles} / ${overview.targetPlannedPiles}`
+                  : '—',
+                label: "Today's target",
+                icon: <TargetIcon className="size-4" />,
+              },
+              {
+                value: overview
+                  ? `${overview.activeRigs} / ${overview.totalRigs}`
+                  : '—',
+                label: 'Active rigs',
+                icon: <DrillIcon className="size-4" />,
+              },
+              {
+                value: overview
+                  ? `${overview.checklistsSubmitted} / ${overview.checklistsExpected}`
+                  : '—',
+                label: "Today's checklists",
+                icon: <ListChecksIcon className="size-4" />,
+              },
+            ]}
+          />
+
+          <SiteProgressTable sites={sites} />
+        </>
       )}
 
       <div className="grid gap-4 xl:grid-cols-2 hidden">
         {alertsQuery.isLoading ? (
-          <CardSkeleton lines={4} />
+          <PageLoader />
         ) : (
           <AlertsPanel
             title="Critical Alerts"
@@ -86,7 +82,7 @@ export default function PilingDashboardPage() {
           />
         )}
         {activityQuery.isLoading ? (
-          <CardSkeleton lines={4} />
+          <PageLoader />
         ) : (
           <ActivityFeed items={activityQuery.data ?? []} />
         )}

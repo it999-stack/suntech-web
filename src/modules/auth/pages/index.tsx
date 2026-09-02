@@ -1,10 +1,12 @@
 import { type FormEvent, useState } from 'react'
+import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { ALL_NAV_ITEMS } from '@/config/modules.config'
+import { getErrorMessage } from '@/lib/errors'
 import { hasModuleAccess } from '@/modules/shared/utils/access'
 import { useAuthStore } from '../store/authStore'
 
@@ -25,8 +27,12 @@ export default function LoginPage() {
         hasModuleAccess(user?.modules ?? [], item.requiredModule)
       )
       navigate(landing?.path ?? '/piling/dashboard', { replace: true })
-    } catch {
-      toast.error('Invalid email or password')
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        toast.error(getErrorMessage(error, 'Invalid email or password'))
+      } else {
+        toast.error('Unable to reach the server. Please try again later.')
+      }
     } finally {
       setIsSubmitting(false)
     }

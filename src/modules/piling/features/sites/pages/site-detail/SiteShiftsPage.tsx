@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
 import { formatTime12h } from '@/lib/date'
 import { DeleteNonWorkingWindowDialog } from '../../../shifts/components/DeleteNonWorkingWindowDialog'
 import { DeleteShiftDialog } from '../../../shifts/components/DeleteShiftDialog'
@@ -50,10 +50,8 @@ export default function SiteShiftsPage() {
 
         <CardContent>
           {shiftsQuery.isLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-24 rounded-lg" />
-              ))}
+            <div className="flex items-center justify-center py-10">
+              <Spinner className="size-6 text-muted-foreground" />
             </div>
           ) : shifts.length === 0 ? (
             <EmptyState
@@ -105,10 +103,8 @@ export default function SiteShiftsPage() {
 
         <CardContent>
           {shiftsQuery.isLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-24 rounded-lg" />
-              ))}
+            <div className="flex items-center justify-center py-10">
+              <Spinner className="size-6 text-muted-foreground" />
             </div>
           ) : windows.length === 0 ? (
             <EmptyState

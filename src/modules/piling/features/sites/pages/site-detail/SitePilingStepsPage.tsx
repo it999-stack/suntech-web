@@ -7,7 +7,7 @@ import { ReorderList } from '@/components/shadix-ui/components/reorder-list'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
+import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { getErrorMessage } from '@/lib/errors'
 import { DimensionSwitcher } from '../../../dimensions/components/DimensionSwitcher'
@@ -198,10 +198,8 @@ export default function SitePilingStepsPage() {
           )}
 
           {stepsQuery.isLoading || dimensionsQuery.isLoading ? (
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-11 rounded-lg" />
-              ))}
+            <div className="flex items-center justify-center py-10">
+              <Spinner className="size-6 text-muted-foreground" />
             </div>
           ) : steps.length === 0 ? (
             <EmptyState

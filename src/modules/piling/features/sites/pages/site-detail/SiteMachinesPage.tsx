@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { PencilLine, PlusIcon, Trash2Icon, TruckIcon } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { EmptyState } from '@/components/EmptyState'
-import { TableSkeleton } from '@/components/skeletons/TableSkeleton'
+import { PageLoader } from '@/components/PageLoader'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -36,7 +36,7 @@ export default function SiteMachinesPage() {
   return (
     <>
       {machinesQuery.isLoading ? (
-        <TableSkeleton rows={8} columns={4} />
+        <PageLoader />
       ) : (
         <Card>
           <CardHeader>
