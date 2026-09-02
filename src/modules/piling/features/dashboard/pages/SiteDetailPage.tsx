@@ -5,12 +5,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { DateRangePicker } from '@/components/DateRangePicker'
 import { EmptyState } from '@/components/EmptyState'
 import { PageLoader } from '@/components/PageLoader'
@@ -43,7 +37,7 @@ export default function SiteDetailPage() {
   const { siteId } = useParams<{ siteId: string }>()
   const queryClient = useQueryClient()
   const [range, setRange] = useState<{ from: string; to: string }>({ from: today(), to: today() })
-  const [exportingType, setExportingType] = useState<'delay' | 'boring' | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
   // Empty array = "All Machines" (no filter) — mirrors the ALL sentinel the
   // single-select version used.
   const [selectedMachineIds, setSelectedMachineIds] = useState<string[]>([])
@@ -157,26 +151,24 @@ export default function SiteDetailPage() {
 
   const checklistId = planStateQuery.data?.exists ? planStateQuery.data.checklistId : null
 
-  async function handleExport(type: 'delay' | 'boring') {
+  async function handleExport() {
     if (!checklistId) return
-    setExportingType(type)
+    setIsExporting(true)
     try {
-      const endpoint = type === 'delay' ? 'delay-report' : 'boring-checklist'
-      const filenamePrefix = type === 'delay' ? 'piling_delay_report' : 'piling_boring_checklist'
-      const { data } = await apiClient.get(`/piling/checklists/${checklistId}/export/${endpoint}`, {
+      const { data } = await apiClient.get(`/piling/checklists/${checklistId}/export/report`, {
         responseType: 'blob',
       })
       const url = URL.createObjectURL(data)
       const link = document.createElement('a')
       link.href = url
-      link.download = `${filenamePrefix}_${range.from}.xlsx`
+      link.download = `piling_daily_report_${range.from}.xlsx`
       link.click()
       URL.revokeObjectURL(url)
       toast.success('Report downloaded successfully')
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to export report'))
     } finally {
-      setExportingType(null)
+      setIsExporting(false)
     }
   }
 
@@ -213,34 +205,21 @@ export default function SiteDetailPage() {
 
         <div className="flex items-center gap-2">
           {isSingleDay && checklistId && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 font-normal"
-                    title="Download Report"
-                    loading={exportingType !== null}
-                  />
-                }
-              >
-                {!exportingType && (
-                  <>
-                    <DownloadIcon className="size-4 text-muted-foreground" />
-                    <span>Download Report</span>
-                  </>
-                )}
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem disabled={exportingType !== null} onClick={() => handleExport('delay')}>
-                  Delay Report
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled={exportingType !== null} onClick={() => handleExport('boring')}>
-                  Boring Checklist
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 font-normal"
+              title="Download Report"
+              loading={isExporting}
+              onClick={handleExport}
+            >
+              {!isExporting && (
+                <>
+                  <DownloadIcon className="size-4 text-muted-foreground" />
+                  <span>Download Report</span>
+                </>
+              )}
+            </Button>
           )}
           <DateRangePicker from={range.from} to={range.to} onChange={setRange} align="end" />
         </div>
